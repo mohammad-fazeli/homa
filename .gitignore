@@ -1,0 +1,6 @@
+.env
+node_modules
+build
+*.sqlite3
+*.sqlite
+*.db
