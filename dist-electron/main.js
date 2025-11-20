@@ -39,6 +39,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const electron_1 = require("electron");
 const path = __importStar(require("path"));
 const dotenv_1 = __importDefault(require("dotenv"));
+const users_1 = require("./ipc/users");
+const model_1 = require("./model");
 dotenv_1.default.config();
 console.log("🚀 ~ process.env.NODE_ENV:", process.env.NODE_ENV);
 const isDev = process.env.NODE_ENV === "development";
@@ -48,6 +50,8 @@ function createWindow() {
         height: 800,
         webPreferences: {
             preload: path.join(__dirname, "preload.js"),
+            contextIsolation: true,
+            nodeIntegration: false,
         },
     });
     if (isDev) {
@@ -60,7 +64,13 @@ function createWindow() {
         win.loadFile(path.join(__dirname, "../dist/renderer/index.html"));
     }
 }
-electron_1.app.whenReady().then(createWindow);
+(async () => {
+    await model_1.sequelize.sync();
+})();
+electron_1.app.whenReady().then(() => {
+    (0, users_1.registerUserHandlers)();
+    createWindow();
+});
 electron_1.app.on("window-all-closed", () => {
     if (process.platform !== "darwin")
         electron_1.app.quit();

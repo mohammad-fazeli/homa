@@ -1,6 +1,8 @@
 import { app, BrowserWindow } from "electron";
 import * as path from "path";
 import dotenv from "dotenv";
+import { registerUserHandlers } from "./ipc/users";
+import { sequelize } from "./model";
 
 dotenv.config();
 
@@ -13,20 +15,27 @@ function createWindow() {
     height: 800,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
     },
   });
 
   if (isDev) {
-    // حالت dev → vite dev server
     win.loadURL("http://localhost:5173");
     win.webContents.openDevTools();
   } else {
-    // حالت build → فایل واقعی
     win.loadFile(path.join(__dirname, "../dist/renderer/index.html"));
   }
 }
 
-app.whenReady().then(createWindow);
+(async () => {
+  await sequelize.sync();
+})();
+
+app.whenReady().then(() => {
+  registerUserHandlers();
+  createWindow();
+});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
