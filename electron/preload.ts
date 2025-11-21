@@ -8,4 +8,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getUsers: () => ipcRenderer.invoke("get-users"),
   addUser: (user: Omit<UserAttributes, "id">) =>
     ipcRenderer.invoke("add-user", user),
+  updateUser: (user: UserAttributes) =>
+    ipcRenderer.invoke("update-user", user),
+  deleteUser: (id: number) =>
+    ipcRenderer.invoke("delete-user", id),
 });

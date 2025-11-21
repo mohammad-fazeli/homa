@@ -55,12 +55,10 @@ function createWindow() {
         },
     });
     if (isDev) {
-        // حالت dev → vite dev server
         win.loadURL("http://localhost:5173");
         win.webContents.openDevTools();
     }
     else {
-        // حالت build → فایل واقعی
         win.loadFile(path.join(__dirname, "../dist/renderer/index.html"));
     }
 }

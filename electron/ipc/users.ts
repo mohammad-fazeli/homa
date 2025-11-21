@@ -4,7 +4,7 @@ import { UserAttributes, UserModel } from "../model";
 export function registerUserHandlers() {
   ipcMain.handle("get-users", async () => {
     const users = await UserModel.findAll();
-    return users;
+    return users.map((user) => user.dataValues);
   });
 
   ipcMain.handle(
@@ -21,7 +21,19 @@ export function registerUserHandlers() {
         sessions: user.sessions,
       });
       const users = await UserModel.findAll();
-      return users;
+      return users.map((user) => user.dataValues);
     }
   );
+
+  ipcMain.handle("update-user", async (event: Electron.IpcMainInvokeEvent, user: UserAttributes) => {
+    await UserModel.update(user, { where: { id: user.id } });
+    const users = await UserModel.findAll();
+    return users.map((user) => user.dataValues);
+  });
+
+  ipcMain.handle("delete-user", async (event: Electron.IpcMainInvokeEvent, id: number) => {
+    await UserModel.destroy({ where: { id } });
+    const users = await UserModel.findAll();
+    return users.map((user) => user.dataValues);
+  });
 }

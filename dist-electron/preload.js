@@ -6,4 +6,6 @@ electron_1.contextBridge.exposeInMainWorld("electronAPI", {
     receive: (channel, func) => electron_1.ipcRenderer.on(channel, (_, ...args) => func(...args)),
     getUsers: () => electron_1.ipcRenderer.invoke("get-users"),
     addUser: (user) => electron_1.ipcRenderer.invoke("add-user", user),
+    updateUser: (user) => electron_1.ipcRenderer.invoke("update-user", user),
+    deleteUser: (id) => electron_1.ipcRenderer.invoke("delete-user", id),
 });
