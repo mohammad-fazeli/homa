@@ -1,7 +1,7 @@
-import { ModelDefined, Optional, Sequelize } from "sequelize";
+import { db } from "./db";
 
-export type SessionLogAttributes = {
-  id: number;
+export type SessionLog = {
+  id?: number;
   userId: number;
   change: number;
   previousValue: number;
@@ -9,33 +9,24 @@ export type SessionLogAttributes = {
   description?: string;
 };
 
-type SessionLogCreationAttributes = Optional<SessionLogAttributes, "id">;
+export const SessionLogModel = {
+  create(log: SessionLog) {
+    const stmt = db.prepare(`
+      INSERT INTO SessionLogs (userId, change, previousValue, newValue, description)
+      VALUES (@userId, @change, @previousValue, @newValue, @description)
+    `);
+    stmt.run(log);
+  },
 
-export function createSessionLogModel(sequelize: Sequelize, DataTypes: any) {
-  const SessionLogModel: ModelDefined<
-    SessionLogAttributes,
-    SessionLogCreationAttributes
-  > = sequelize.define("SessionLogs", {
-    userId: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    change: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    previousValue: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    newValue: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    description: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-  });
-  return SessionLogModel;
-}
+  findByUser(userId: number) {
+    return db
+      .prepare(
+        `
+      SELECT * FROM SessionLogs
+      WHERE userId = ?
+      ORDER BY createdAt DESC
+    `
+      )
+      .all(userId);
+  },
+};

@@ -2,7 +2,6 @@ import { app, BrowserWindow } from "electron";
 import * as path from "path";
 import dotenv from "dotenv";
 import { registerUserHandlers } from "./ipc/users";
-import { sequelize } from "./model";
 
 dotenv.config();
 
@@ -24,13 +23,9 @@ function createWindow() {
     win.loadURL("http://localhost:5173");
     win.webContents.openDevTools();
   } else {
-    win.loadFile(path.join(__dirname, "../dist/renderer/index.html"));
+    win.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
 }
-
-(async () => {
-  await sequelize.sync();
-})();
 
 app.whenReady().then(() => {
   registerUserHandlers();

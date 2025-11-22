@@ -1,59 +1,45 @@
 {
   "name": "electron-react-sqlite",
   "version": "1.0.0",
-  "description": "Electron + React + Express + SQLite starter",
+  "description": "Electron + React + SQLite starter",
   "main": "dist-electron/main.js",
   "type": "commonjs",
   "scripts": {
-    "dev": "concurrently \"npm:dev:renderer\" \"npm:dev:electron\"",
+    "dev": "concurrently \"npm run dev:renderer\" \"npm run dev:electron\"",
     "dev:renderer": "cd renderer && vite",
     "dev:electron": "wait-on http://localhost:5173 && npm run electron:start",
-    "electron:start": "tsc -p electron --watch & electron .",
+    "electron:start": "tsc -p electron && electron dist-electron/main.js",
     "build:renderer": "cd renderer && vite build",
     "build:electron": "tsc -p electron",
     "build": "npm run build:renderer && npm run build:electron",
     "dist": "npm run build && electron-builder"
   },
-  "keywords": [
-    "electron",
-    "react",
-    "sqlite",
-    "vite"
-  ],
-  "author": "",
-  "license": "MIT",
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.17",
+    "better-sqlite3": "^12.4.6",
     "dotenv": "^17.2.3",
     "framer-motion": "^12.23.24",
     "lucide-react": "^0.554.0",
-    "moment-jalaali": "^0.10.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "sequelize": "^6.37.7",
-    "sqlite3": "^5.1.7",
     "tailwindcss": "^4.1.17",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
-    "@types/moment-jalaali": "^0.7.9",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.14.10",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.3",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.20",
-    "concurrently": "^9.0.1",
+    "concurrently": "^9.2.1",
     "electron": "^32.0.1",
     "electron-builder": "^24.13.3",
-    "electron-rebuild": "^3.2.9",
     "nodemon": "^3.1.4",
-    "npm-run-all": "^4.1.5",
     "postcss": "^8.5.6",
-    "rimraf": "^6.0.1",
-    "ts-node-dev": "^2.0.0",
     "typescript": "^5.5.4",
     "vite": "^5.4.1",
     "wait-on": "^7.2.0"
@@ -66,31 +52,19 @@
       "buildResources": "build"
     },
     "files": [
-      "dist/electron/**/*",
+      "dist-electron/**/*",
       "dist/renderer/**/*",
-      "dist/server/**/*",
       "data/**/*",
       "package.json"
     ],
     "extraMetadata": {
-      "main": "dist/electron/main.js"
-    },
-    "mac": {
-      "category": "public.app-category.developer-tools",
-      "target": [
-        "dmg"
-      ]
+      "main": "dist-electron/main.js"
     },
     "win": {
+      "signAndEditExecutable": false,
       "target": [
         "nsis"
       ]
-    },
-    "linux": {
-      "target": [
-        "AppImage"
-      ],
-      "category": "Utility"
     }
   }
 }

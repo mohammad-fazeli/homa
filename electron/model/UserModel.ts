@@ -1,7 +1,7 @@
-import { ModelDefined, Optional, Sequelize } from "sequelize";
+import { db } from "./db";
 
-export type UserAttributes = {
-  id: number;
+export type User = {
+  id?: number;
   firstName: string;
   lastName: string;
   phone: string;
@@ -9,23 +9,34 @@ export type UserAttributes = {
   sessions: number;
 };
 
-type UserCreationAttributes = Optional<UserAttributes, "id">;
+export const UserModel = {
+  findAll() {
+    return db.prepare("SELECT * FROM Users ORDER BY id DESC").all();
+  },
 
-export function createUserModel(sequelize: Sequelize, DataTypes: any) {
-  const UserModel: ModelDefined<UserAttributes, UserCreationAttributes> =
-    sequelize.define("Users", {
-      firstName: DataTypes.STRING,
-      lastName: DataTypes.STRING,
-      phone: {
-        type: DataTypes.STRING,
-        unique: true,
-      },
-      nationalId: {
-        type: DataTypes.STRING,
-        unique: true,
-      },
-      sessions: DataTypes.NUMBER,
-    });
+  findById(id: number) {
+    return db.prepare("SELECT * FROM Users WHERE id = ?").get(id);
+  },
 
-  return UserModel;
-}
+  create(user: User) {
+    const stmt = db.prepare(`
+      INSERT INTO Users (firstName, lastName, phone, nationalId, sessions)
+      VALUES (@firstName, @lastName, @phone, @nationalId, @sessions)
+    `);
+    stmt.run(user);
+  },
+
+  update(user: User) {
+    const stmt = db.prepare(`
+      UPDATE Users
+      SET firstName=@firstName, lastName=@lastName, phone=@phone,
+          nationalId=@nationalId, sessions=@sessions
+      WHERE id=@id
+    `);
+    stmt.run(user);
+  },
+
+  delete(id: number) {
+    db.prepare("DELETE FROM Users WHERE id = ?").run(id);
+  },
+};
