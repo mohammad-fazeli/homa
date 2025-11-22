@@ -16,6 +16,7 @@ export default function App() {
     setShowModal,
     loadUsers,
     addUser,
+    setEditingUser,
   } = useUsersStore();
 
   useEffect(() => {
@@ -75,7 +76,10 @@ export default function App() {
 
           <div className="flex gap-3">
             <button
-              onClick={() => setShowModal(true)}
+              onClick={() => {
+                setShowModal(true);
+                setEditingUser(null);
+              }}
               className="inline-flex items-center gap-2 bg-linear-to-r from-sky-500 to-indigo-600 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg"
             >
               <Plus size={16} /> ساخت کاربر جدید
@@ -97,7 +101,7 @@ export default function App() {
 
       {showModal && (
         <Modal onClose={() => setShowModal(false)}>
-          <UserForm onCancel={() => setShowModal(false)} onSave={addUser} />
+          <UserForm onCancel={() => setShowModal(false)} />
         </Modal>
       )}
     </div>

@@ -1,5 +1,4 @@
-import { DataTypes, ModelDefined, Optional } from "sequelize";
-import { sequelize } from ".";
+import { ModelDefined, Optional, Sequelize } from "sequelize";
 
 export type UserAttributes = {
   id: number;
@@ -12,17 +11,21 @@ export type UserAttributes = {
 
 type UserCreationAttributes = Optional<UserAttributes, "id">;
 
-export const UserModel: ModelDefined<UserAttributes, UserCreationAttributes> =
-  sequelize.define("Users", {
-    firstName: DataTypes.STRING,
-    lastName: DataTypes.STRING,
-    phone: {
-      type: DataTypes.STRING,
-      unique: true,
-    },
-    nationalId: {
-      type: DataTypes.STRING,
-      unique: true,
-    },
-    sessions: DataTypes.NUMBER,
-  });
+export function createUserModel(sequelize: Sequelize, DataTypes: any) {
+  const UserModel: ModelDefined<UserAttributes, UserCreationAttributes> =
+    sequelize.define("Users", {
+      firstName: DataTypes.STRING,
+      lastName: DataTypes.STRING,
+      phone: {
+        type: DataTypes.STRING,
+        unique: true,
+      },
+      nationalId: {
+        type: DataTypes.STRING,
+        unique: true,
+      },
+      sessions: DataTypes.NUMBER,
+    });
+
+  return UserModel;
+}

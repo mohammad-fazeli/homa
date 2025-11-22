@@ -1,0 +1,26 @@
+directories:
+  output: release
+  buildResources: build
+appId: com.example.electronreactsqlite
+productName: ElectronReactSQLite
+files:
+  - filter:
+      - dist/electron/**/*
+      - dist/renderer/**/*
+      - dist/server/**/*
+      - data/**/*
+      - package.json
+extraMetadata:
+  main: dist/electron/main.js
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - dmg
+win:
+  target:
+    - nsis
+linux:
+  target:
+    - AppImage
+  category: Utility
+electronVersion: 32.3.3

@@ -1,6 +1,8 @@
 import { app } from "electron";
-import { Sequelize } from "sequelize";
+import { DataTypes, Sequelize } from "sequelize";
 import path from "path";
+import { createUserModel } from "./UserModel";
+import { createSessionLogModel } from "./SessionLogModel";
 
 const databasePath = path.join(app.getPath("userData"), "database.sqlite");
 
@@ -10,4 +12,14 @@ export const sequelize = new Sequelize({
   logging: false,
 });
 
-export * from "./UserModel";
+export const UserModel = createUserModel(sequelize, DataTypes);
+export const SessionLogModel = createSessionLogModel(sequelize, DataTypes);
+
+UserModel.hasMany(SessionLogModel, {
+  foreignKey: "userId",
+  as: "logs",
+});
+
+SessionLogModel.belongsTo(UserModel, {
+  foreignKey: "userId",
+});
