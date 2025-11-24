@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, ipcMain } from "electron";
 import * as path from "path";
 import dotenv from "dotenv";
 import { registerUserHandlers } from "./ipc/users";
@@ -12,10 +12,12 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
+    frame: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      devTools: isDev,
     },
   });
 
@@ -24,7 +26,29 @@ function createWindow() {
     win.webContents.openDevTools();
   } else {
     win.loadFile(path.join(__dirname, "./../renderer/dist/index.html"));
+    win.webContents.on("devtools-opened", () => {
+      win.webContents.closeDevTools();
+    });
+
+    win.removeMenu();
+
+    win.webContents.on("before-input-event", (event, input) => {
+      if (
+        !isDev &&
+        input.control &&
+        input.shift &&
+        input.key.toLowerCase() === "i"
+      ) {
+        event.preventDefault();
+      }
+    });
   }
+
+  ipcMain.on("window:minimize", () => win.minimize());
+  ipcMain.on("window:maximize", () => {
+    win.isMaximized() ? win.unmaximize() : win.maximize();
+  });
+  ipcMain.on("window:close", () => win.close());
 }
 
 app.whenReady().then(() => {

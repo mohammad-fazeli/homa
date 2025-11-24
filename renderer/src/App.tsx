@@ -59,7 +59,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen p-8 bg-linear-to-l from-blue-100 to-purple-100">
+    <div className="min-h-screen p-8 pt-12 bg-linear-to-l from-blue-100 to-purple-100">
       <header className="max-w-6xl mx-auto mb-6">
         <div className="flex items-center justify-between gap-4">
           <div className="relative">

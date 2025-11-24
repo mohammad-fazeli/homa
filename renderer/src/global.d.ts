@@ -27,6 +27,9 @@ export type GetUserType = {
 };
 
 export type RendererElectronAPI = {
+  minimize: () => void;
+  maximize: () => void;
+  close: () => void;
   getApiBaseUrl: () => Promise<string | null>;
   openExternal: (url: string) => Promise<void>;
   getUsers: () => Promise<UserType[]>;

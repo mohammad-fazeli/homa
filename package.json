@@ -1,7 +1,6 @@
 {
-  "name": "electron-react-sqlite",
+  "name": "homa",
   "version": "1.0.0",
-  "description": "Electron + React + SQLite starter",
   "main": "dist-electron/main.js",
   "type": "commonjs",
   "scripts": {
@@ -45,8 +44,8 @@
     "wait-on": "^7.2.0"
   },
   "build": {
-    "appId": "com.example.electronreactsqlite",
-    "productName": "ElectronReactSQLite",
+    "appId": "com.homa.studentmanager",
+    "productName": "هما",
     "directories": {
       "output": "release",
       "buildResources": "build"
