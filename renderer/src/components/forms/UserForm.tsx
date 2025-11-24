@@ -79,7 +79,7 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
             <button
               type="button"
               onClick={() => setSessions((s) => Math.max(0, s - 1))}
-              className="px-3 p-1 rounded-md border"
+              className="px-3 p-1 rounded-md border cursor-pointer"
             >
               -
             </button>
@@ -87,7 +87,7 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
             <button
               type="button"
               onClick={() => setSessions((s) => s + 1)}
-              className="px-3 p-1 rounded-md border"
+              className="px-3 p-1 rounded-md border cursor-pointer"
             >
               +
             </button>
@@ -98,13 +98,13 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 rounded-lg border"
+            className="px-4 py-2 rounded-lg border cursor-pointer"
           >
             انصراف
           </button>
           <button
             type="submit"
-            className="px-4 py-2 rounded-lg bg-linear-to-r from-sky-500 to-indigo-600 text-white"
+            className="px-4 py-2 rounded-lg bg-linear-to-r from-sky-500 to-indigo-600 text-white cursor-pointer"
           >
             ذخیره
           </button>

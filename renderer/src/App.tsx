@@ -80,14 +80,14 @@ export default function App() {
                 setShowModal(true);
                 setEditingUser(null);
               }}
-              className="inline-flex items-center gap-2 bg-linear-to-r from-sky-500 to-indigo-600 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg"
+              className="inline-flex items-center gap-2 bg-linear-to-r from-sky-500 to-indigo-600 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg cursor-pointer"
             >
               <Plus size={16} /> ساخت کاربر جدید
             </button>
 
             <button
               onClick={exportCSV}
-              className="inline-flex items-center gap-2 bg-white border border-slate-200 px-3 py-2 rounded-lg shadow-sm hover:shadow"
+              className="inline-flex items-center gap-2 bg-white border border-slate-200 px-3 py-2 rounded-lg shadow-sm hover:shadow cursor-pointer"
             >
               <Download size={16} /> خروجی
             </button>

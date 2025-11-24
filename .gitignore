@@ -5,3 +5,6 @@ build
 *.sqlite3
 *.sqlite
 *.db
+dist-electron
+release
+renderer/dist

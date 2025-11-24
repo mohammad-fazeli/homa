@@ -53,7 +53,7 @@
     },
     "files": [
       "dist-electron/**/*",
-      "dist/renderer/**/*",
+      "renderer/dist/**/*",
       "data/**/*",
       "package.json"
     ],
