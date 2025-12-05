@@ -1,23 +1,33 @@
 import { motion } from "framer-motion";
 import { Calendar, Clock } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { InputDatePicker } from "jalaali-react-date-picker";
+import { Moment } from "moment";
+import { SessionLogType, UserType } from "../global";
 
 export default function UserLogsModalContent({
   user,
   logs,
 }: {
-  user: any;
-  logs: any[];
+  user: UserType;
+  logs: SessionLogType[];
 }) {
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [from, setFrom] = useState<Moment | null>();
+  const [to, setTo] = useState<Moment | null>();
 
-  const filteredLogs = logs.filter((log) => {
-    const created = new Date(log.createdAt).getTime();
-    const afterFrom = from ? created >= new Date(from).getTime() : true;
-    const beforeTo = to ? created <= new Date(to).getTime() : true;
-    return afterFrom && beforeTo;
-  });
+  const fromTime = from
+    ? new Date(from.startOf("day").toString()).getTime()
+    : null;
+  const toTime = to ? new Date(to.endOf("day").toString()).getTime() : null;
+
+  const filteredLogs = useMemo(() => {
+    return logs.filter((log) => {
+      const createdTime = new Date(log.createdAt).getTime();
+      if (fromTime && createdTime < fromTime) return false;
+      if (toTime && createdTime > toTime) return false;
+      return true;
+    });
+  }, [logs, fromTime, toTime]);
 
   return (
     <motion.div
@@ -36,22 +46,25 @@ export default function UserLogsModalContent({
           <label className="text-sm text-slate-600 flex items-center gap-2">
             <Calendar size={16} /> از تاریخ
           </label>
-          <input
-            type="date"
+
+          <InputDatePicker
             value={from}
-            onChange={(e) => setFrom(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-white/40 border border-white/50 focus:ring-2 focus:ring-indigo-400 shadow-sm"
+            onChange={(date) => {
+              setFrom(date);
+            }}
+            closeOnChange={true}
           />
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-sm text-slate-600 flex items-center gap-2">
             <Calendar size={16} /> تا تاریخ
           </label>
-          <input
-            type="date"
+          <InputDatePicker
             value={to}
-            onChange={(e) => setTo(e.target.value)}
-            className="px-3 py-2 rounded-xl bg-white/40 border border-white/50 focus:ring-2 focus:ring-indigo-400 shadow-sm"
+            onChange={(date) => {
+              setTo(date);
+            }}
+            closeOnChange={true}
           />
         </div>
       </div>

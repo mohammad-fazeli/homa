@@ -14,6 +14,7 @@ export type SessionLogType = {
   previousValue: number;
   newValue: number;
   description?: string;
+  createdAt: string;
 };
 
 export type GetUserType = {
