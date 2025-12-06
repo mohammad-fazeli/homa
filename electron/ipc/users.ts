@@ -1,23 +1,38 @@
 import { ipcMain } from "electron";
-import { UserModel } from "../model/UserModel";
+import { User, UserModel } from "../model/UserModel";
 import { SessionLogModel } from "../model/SessionLogModel";
+import { CourseModel } from "../model/CourseModel";
+import { SessionModel } from "../model/SessionModel";
 
 export function registerUserHandlers() {
-  ipcMain.handle("get-users", () => {
-    return UserModel.findAll();
-  });
+  ipcMain.handle(
+    "add-user",
+    (
+      event,
+      user: Omit<User, "id">,
+      course?: { cost: number; sessions: number },
+      sessions?: Date[]
+    ) => {
+      const newUser = UserModel.create(user);
+      if (course) {
+        const newCourse = CourseModel.create({ ...course, userId: newUser.id });
+        sessions?.forEach((session) => {
+          SessionModel.create({ courseId: newCourse.id, date: session });
+        });
+      }
+      return newUser;
+    }
+  );
 
   ipcMain.handle("get-user", (event, userId: number) => {
     const user = UserModel.findById(userId);
     if (!user) throw new Error("کاربر یافت نشد");
 
-    const logs = SessionLogModel.findByUser(userId);
-    return { ...user, logs };
+    return user;
   });
 
-  ipcMain.handle("add-user", (event, user) => {
-    UserModel.create(user);
-    return UserModel.findAll();
+  ipcMain.handle("get-users", (event, page: number, limit: number) => {
+    return UserModel.findAll(page, limit);
   });
 
   ipcMain.handle("update-user", (event, updatedUser) => {

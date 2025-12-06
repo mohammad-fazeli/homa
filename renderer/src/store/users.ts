@@ -3,20 +3,24 @@ import { SessionLogType, UserType } from "../global";
 
 interface UsersStore {
   users: UserType[];
+  user: UserType | null;
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
   query: string;
   isLoading: boolean;
 
-  showModal: boolean;
-  showUser: UserType | null;
   sessionLog: SessionLogType[] | null;
-  editingUser: UserType | null;
+  editingUser: boolean;
   deleteUserId: number | null;
 
+  setPage: (p: number) => void;
+  setTotalPages: (p: number) => void;
   setQuery: (q: string) => void;
-  setShowModal: (v: boolean) => void;
-  setShowUser: (v: UserType | null) => void;
+  setUser: (v: UserType | null) => void;
   setSessionLog: (v: SessionLogType[] | null) => void;
-  setEditingUser: (u: UserType | null) => void;
+  setEditingUser: (u: boolean) => void;
   setDeleteUserId: (id: number | null) => void;
 
   loadUsers: () => Promise<void>;
@@ -29,18 +33,22 @@ interface UsersStore {
 
 export const useUsersStore = create<UsersStore>((set, get) => ({
   users: [],
+  user: null,
+  total: 0,
   query: "",
+  limit: 10,
+  page: 1,
+  totalPages: 1,
   isLoading: false,
 
-  showModal: false,
-  showUser: null,
   sessionLog: null,
-  editingUser: null,
+  editingUser: false,
   deleteUserId: null,
 
+  setPage: (p) => set({ page: p }),
+  setTotalPages: (p) => set({ totalPages: p }),
   setQuery: (q) => set({ query: q }),
-  setShowModal: (v) => set({ showModal: v }),
-  setShowUser: (u) => set({ showUser: u }),
+  setUser: (u) => set({ user: u }),
   setSessionLog: (u) => set({ sessionLog: u }),
   setEditingUser: (u) => set({ editingUser: u }),
   setDeleteUserId: (id) => set({ deleteUserId: id }),
@@ -48,8 +56,15 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
   loadUsers: async () => {
     set({ isLoading: true });
     try {
-      const data = await window.electronAPI?.getUsers?.();
-      set({ users: data ?? [], isLoading: false });
+      const data = await window.electronAPI?.getUsers(get().page, get().limit);
+      set({
+        users: data?.data ?? [],
+        total: data?.total,
+        page: data?.page,
+        limit: data?.limit,
+        totalPages: data?.totalPages,
+        isLoading: false,
+      });
     } catch {
       set({ isLoading: false });
     }
@@ -58,22 +73,13 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
   addUser: async (payload) => {
     await window.electronAPI?.addUser?.(payload);
     await get().loadUsers();
-    set({ showModal: false });
   },
 
   getUser: async (userId) => {
     const result = await window.electronAPI?.getUser(userId);
     if (!result) return;
     set({
-      showUser: {
-        id: result.id,
-        firstName: result.firstName,
-        lastName: result.lastName,
-        nationalId: result.nationalId,
-        phone: result.phone,
-        sessions: result.sessions,
-      },
-      sessionLog: result.logs,
+      user: result,
     });
   },
 
@@ -81,8 +87,7 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
     await window.electronAPI?.updateUser?.(payload);
     await get().loadUsers();
     set({
-      showModal: false,
-      editingUser: null,
+      editingUser: false,
     });
   },
 
@@ -96,8 +101,6 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
     const user = get().users.find((u) => u.id === id);
     if (!user) return;
 
-    const updated = { ...user, sessions: user.sessions + delta };
-    await window.electronAPI?.updateUser?.(updated);
     await get().loadUsers();
   },
 }));

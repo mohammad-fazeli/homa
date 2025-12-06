@@ -5,11 +5,11 @@ const menuItems = [
 
   {
     name: "مدیریت مشتریان",
-    path: "/clients",
+    path: "/users",
     icon: "👥",
     children: [
-      { name: "لیست مشتریان", path: "/clients" },
-      { name: "افزودن مشتری", path: "/clients/new" },
+      { name: "لیست مشتریان", path: "/users" },
+      { name: "افزودن مشتری", path: "/user/new" },
     ],
   },
 

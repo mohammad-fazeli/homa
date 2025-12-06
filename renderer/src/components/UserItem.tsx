@@ -1,22 +1,17 @@
 import React from "react";
 import { UserType } from "../global";
-import {
-  Edit2,
-  Eye,
-  MinusCircle,
-  PlusCircle,
-  Trash2,
-  User,
-} from "lucide-react";
+import { Edit2, Eye, MinusCircle, PlusCircle, User } from "lucide-react";
 import { useUsersStore } from "../store/users";
+import { useNavigate } from "react-router-dom";
 
 interface UserItemProps {
   user: UserType;
 }
 
 const UserItem: React.FC<UserItemProps> = ({ user }) => {
-  const { setShowModal, setEditingUser, changeSessions, getUser } =
-    useUsersStore();
+  const navigate = useNavigate();
+
+  const { setEditingUser, changeSessions, getUser } = useUsersStore();
 
   return (
     <tr key={user.id} className="hover:bg-slate-50 transition-colors">
@@ -38,7 +33,9 @@ const UserItem: React.FC<UserItemProps> = ({ user }) => {
         {user.phone}
       </td>
       <td className="px-6 py-4 hidden lg:table-cell text-slate-600 text-center">
-        {user.nationalId}
+        {user.course?.nextSessionDate
+          ? new Date(user.course?.nextSessionDate).toLocaleString("fa-ir")
+          : "ندارد"}
       </td>
 
       <td className="px-6 py-4 text-center">
@@ -52,7 +49,7 @@ const UserItem: React.FC<UserItemProps> = ({ user }) => {
           </button>
 
           <div className="px-3 pt-1 rounded-md bg-slate-100 font-medium">
-            {user.sessions}
+            {user.course?.totalSessions || 0}
           </div>
 
           <button
@@ -69,8 +66,9 @@ const UserItem: React.FC<UserItemProps> = ({ user }) => {
         <div className="inline-flex items-center gap-2">
           <button
             onClick={() => {
-              setEditingUser(user);
-              setShowModal(true);
+              setEditingUser(true);
+              getUser(user.id);
+              navigate("/users/edit");
             }}
             className="px-3 py-2.5 rounded-md border border-slate-200 hover:shadow-sm cursor-pointer"
             title="ویرایش"

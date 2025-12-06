@@ -4,7 +4,13 @@ export type UserType = {
   lastName: string;
   phone: string;
   nationalId: string;
-  sessions: number;
+  course?: {
+    id: number;
+    cost: number;
+    totalSessions: number;
+    sessions: { id: number; date: string; used: boolean; usedAt: string }[];
+    nextSessionDate: string | null;
+  };
 };
 
 export type SessionLogType = {
@@ -33,7 +39,16 @@ export type RendererElectronAPI = {
   close: () => void;
   getApiBaseUrl: () => Promise<string | null>;
   openExternal: (url: string) => Promise<void>;
-  getUsers: () => Promise<UserType[]>;
+  getUsers: (
+    page: number,
+    limit: number
+  ) => Promise<{
+    data: UserType[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }>;
   getUser: (userid: number) => Promise<GetUserType>;
   addUser: (user: User) => Promise<UserType[]>;
   updateUser: (user: UserAttributes) => Promise<UserType[]>;

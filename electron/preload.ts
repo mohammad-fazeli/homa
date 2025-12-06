@@ -10,7 +10,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   maximize: () => ipcRenderer.send("window:maximize"),
   close: () => ipcRenderer.send("window:close"),
 
-  getUsers: () => ipcRenderer.invoke("get-users"),
+  getUsers: (page: number = 1, limit: number = 10) =>
+    ipcRenderer.invoke("get-users", page, limit),
   getUser: (userId: number) => ipcRenderer.invoke("get-user", userId),
   addUser: (user: Omit<User, "id">) => ipcRenderer.invoke("add-user", user),
   updateUser: (user: User) => ipcRenderer.invoke("update-user", user),

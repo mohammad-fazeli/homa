@@ -1,19 +1,44 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUsersStore } from "../../store/users";
-import { motion } from "framer-motion";
+import { CreditCard, User, Phone, IdCard, Plus, Minus } from "lucide-react";
+import WeeklyCalendar from "../WeeklyCalendarComponent.";
 
 export default function UserForm({ onCancel }: { onCancel: () => void }) {
-  const { editingUser, addUser, updateUser } = useUsersStore();
-  const [firstName, setFirstName] = useState(editingUser?.firstName || "");
-  const [lastName, setLastName] = useState(editingUser?.lastName || "");
-  const [phone, setPhone] = useState(editingUser?.phone || "");
-  const [nationalId, setNationalId] = useState(editingUser?.nationalId || "");
-  const [sessions, setSessions] = useState(editingUser?.sessions ?? 0);
+  const { user: editingUser, addUser, updateUser, getUser } = useUsersStore();
+  console.log("🚀 ~ editingUser:", editingUser?.course?.sessions);
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [nationalId, setNationalId] = useState("");
+  const [sessions, setSessions] = useState(0);
+  const [cost, setCost] = useState("");
+
+  useEffect(() => {
+    if (editingUser) {
+      setFirstName(editingUser.firstName || "");
+      setLastName(editingUser.lastName || "");
+      setPhone(editingUser.phone || "");
+      setNationalId(editingUser.nationalId || "");
+      setSessions(editingUser.course?.totalSessions || 0);
+      setCost(editingUser.course?.cost.toLocaleString() || "");
+      getUser(editingUser.id);
+    } else {
+      setFirstName("");
+      setLastName("");
+      setPhone("");
+      setNationalId("");
+      setSessions(0);
+      setCost("");
+    }
+  }, []);
 
   const submit = (e?: React.FormEvent) => {
     e?.preventDefault();
+
     if (!firstName.trim() || !lastName.trim())
-      return alert("نام و نام خانوادگی را وارد کنید.");
+      return alert("نام و نام‌خانوادگی را وارد کنید.");
+
     const payload = {
       id: editingUser?.id,
       firstName: firstName.trim(),
@@ -21,95 +46,145 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
       phone: phone.trim(),
       nationalId: nationalId.trim(),
       sessions,
+      cost: cost.trim(),
     };
+
     if (editingUser && editingUser.id) {
       updateUser({ ...payload, id: editingUser.id });
     } else {
       addUser(payload);
     }
+
+    onCancel();
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 8 }}
-      className="backdrop-blur-xl bg-white/70 border border-white/30 rounded-3xl shadow-2xl p-6 w-full max-w-2xl"
-    >
-      <form onSubmit={submit} className="space-y-4 ">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">
-            {editingUser ? "ویرایش کاربر" : "کاربر جدید"}
-          </h2>
-          <div className="text-sm text-slate-400">
-            شناسه: {editingUser?.id ?? "—"}
-          </div>
-        </div>
+    <div className="bg-white shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-3xl p-10 max-w-4xl mx-auto border border-slate-100">
+      {/* هدر */}
+      <div className="mb-10">
+        <h2 className="text-2xl font-bold bg-linear-to-r from-indigo-600 to-sky-500 bg-clip-text text-transparent">
+          {editingUser ? "ویرایش مشتری" : "مشتری جدید"}
+        </h2>
+        <p className="text-slate-500 mt-1 text-sm">
+          اطلاعات مشتری را وارد کنید
+        </p>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <input
+      <form onSubmit={submit} className="space-y-8">
+        {/* فیلدها */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Field
+            label="نام"
             value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            placeholder="نام"
-            className="px-3 py-2 border rounded-lg"
+            onChange={setFirstName}
+            icon={<User size={18} className="text-slate-400" />}
           />
-          <input
+
+          <Field
+            label="نام خانوادگی"
             value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            placeholder="نام خانوادگی"
-            className="px-3 py-2 border rounded-lg"
+            onChange={setLastName}
+            icon={<User size={18} className="text-slate-400" />}
           />
-          <input
+
+          <Field
+            label="شماره تلفن"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="تلفن"
-            className="px-3 py-2 border rounded-lg"
+            onChange={setPhone}
+            icon={<Phone size={18} className="text-slate-400" />}
           />
-          <input
+
+          <Field
+            label="کد ملی"
             value={nationalId}
-            onChange={(e) => setNationalId(e.target.value)}
-            placeholder="کد ملی"
-            className="px-3 py-2 border rounded-lg"
+            onChange={setNationalId}
+            icon={<IdCard size={18} className="text-slate-400" />}
+          />
+
+          <Field
+            label="هزینه (تومان)"
+            value={cost}
+            onChange={setCost}
+            icon={<CreditCard size={18} className="text-slate-400" />}
           />
         </div>
 
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-slate-600">تعداد جلسات</label>
-          <div className="inline-flex items-center gap-2">
+        {/* تعداد جلسات */}
+        <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-4">
+          <div className="text-slate-700 font-medium">تعداد جلسات</div>
+
+          <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setSessions((s) => Math.max(0, s - 1))}
-              className="px-3 p-1 rounded-md border cursor-pointer"
+              className="w-10 h-10 flex items-center justify-center
+                         bg-white border border-slate-300 rounded-xl 
+                         hover:bg-slate-100 transition"
             >
-              -
+              <Minus size={18} />
             </button>
-            <div className="px-3 py-1 border rounded-md">{sessions}</div>
+
+            <div className="text-xl font-semibold w-12 text-center">
+              {sessions}
+            </div>
+
             <button
               type="button"
               onClick={() => setSessions((s) => s + 1)}
-              className="px-3 p-1 rounded-md border cursor-pointer"
+              className="w-10 h-10 flex items-center justify-center
+                         bg-white border border-slate-300 rounded-xl 
+                         hover:bg-slate-100 transition"
             >
-              +
+              <Plus size={18} />
             </button>
           </div>
         </div>
+        <WeeklyCalendar records={editingUser?.course?.sessions || []} />
 
-        <div className="flex items-center justify-end gap-3">
+        {/* دکمه‌ها */}
+        <div className="flex items-center justify-end gap-4 pt-4">
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 rounded-lg border cursor-pointer"
+            className="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600
+                       hover:bg-slate-100 transition shadow-sm"
           >
             انصراف
           </button>
+
           <button
             type="submit"
-            className="px-4 py-2 rounded-lg bg-linear-to-r from-sky-500 to-indigo-600 text-white cursor-pointer"
+            className="px-6 py-2.5 rounded-xl text-white 
+                       bg-linear-to-r from-sky-500 to-indigo-600 
+                       shadow-md hover:shadow-lg transition"
           >
             ذخیره
           </button>
         </div>
       </form>
-    </motion.div>
+    </div>
+  );
+}
+
+function Field({ label, value, onChange, icon }: any) {
+  return (
+    <div className="space-y-1">
+      <label className="text-sm text-slate-500">{label}</label>
+
+      <div
+        className="flex items-center gap-2 
+                      rounded-xl border border-slate-300 bg-slate-50
+                      px-3 py-2 
+                      focus-within:border-indigo-500 focus-within:bg-white
+                      transition"
+      >
+        {icon}
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="flex-1 bg-transparent focus:outline-none text-slate-700"
+        />
+      </div>
+    </div>
   );
 }
