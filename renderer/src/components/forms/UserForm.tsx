@@ -4,8 +4,7 @@ import { CreditCard, User, Phone, IdCard, Plus, Minus } from "lucide-react";
 import WeeklyCalendar from "../WeeklyCalendarComponent.";
 
 export default function UserForm({ onCancel }: { onCancel: () => void }) {
-  const { user: editingUser, addUser, updateUser, getUser } = useUsersStore();
-  console.log("🚀 ~ editingUser:", editingUser?.course?.sessions);
+  const { user, editingUser, addUser, updateUser, getUser } = useUsersStore();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -13,16 +12,25 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
   const [nationalId, setNationalId] = useState("");
   const [sessions, setSessions] = useState(0);
   const [cost, setCost] = useState("");
+  const [records, setRecords] = useState<
+    {
+      id: number;
+      date: string;
+      used: boolean;
+      usedAt: string;
+    }[]
+  >([]);
 
   useEffect(() => {
-    if (editingUser) {
-      setFirstName(editingUser.firstName || "");
-      setLastName(editingUser.lastName || "");
-      setPhone(editingUser.phone || "");
-      setNationalId(editingUser.nationalId || "");
-      setSessions(editingUser.course?.totalSessions || 0);
-      setCost(editingUser.course?.cost.toLocaleString() || "");
-      getUser(editingUser.id);
+    if (editingUser && user) {
+      setFirstName(user.firstName || "");
+      setLastName(user.lastName || "");
+      setPhone(user.phone || "");
+      setNationalId(user.nationalId || "");
+      setSessions(user.course?.totalSessions || 0);
+      setCost(user.course?.cost.toLocaleString() || "");
+      setRecords(user.course?.sessions || []);
+      getUser(user.id);
     } else {
       setFirstName("");
       setLastName("");
@@ -30,8 +38,9 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
       setNationalId("");
       setSessions(0);
       setCost("");
+      setRecords([]);
     }
-  }, []);
+  }, [editingUser]);
 
   const submit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -40,7 +49,7 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
       return alert("نام و نام‌خانوادگی را وارد کنید.");
 
     const payload = {
-      id: editingUser?.id,
+      id: user?.id,
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       phone: phone.trim(),
@@ -49,8 +58,8 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
       cost: cost.trim(),
     };
 
-    if (editingUser && editingUser.id) {
-      updateUser({ ...payload, id: editingUser.id });
+    if (user && user.id) {
+      updateUser({ ...payload, id: user.id });
     } else {
       addUser(payload);
     }
@@ -139,7 +148,7 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
             </button>
           </div>
         </div>
-        <WeeklyCalendar records={editingUser?.course?.sessions || []} />
+        <WeeklyCalendar records={records} />
 
         {/* دکمه‌ها */}
         <div className="flex items-center justify-end gap-4 pt-4">
