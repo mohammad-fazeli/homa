@@ -7,17 +7,21 @@ type RecordItem = {
   date: string;
   used: boolean;
   usedAt: string | null;
+  userId: number;
 };
 
 type CalendarEvent = {
   id: number;
   title: string;
   start: Date;
+  used?: boolean;
+  userId?: number;
 };
 
 interface WeeklyCalendarProps {
+  records?: RecordItem[];
   events?: CalendarEvent[];
-  records?: RecordItem[]; // ← اضافه شد
+  currentUserId?: number; // ← اضافه شد
   onAddEvent?: (date: Date) => void;
 }
 
@@ -35,6 +39,12 @@ function addDays(date: Date, days: number): Date {
   return d;
 }
 
+function getRecordColor(ev: CalendarEvent, currentUserId?: number) {
+  if (ev.used) return "bg-green-600";
+  if (ev.userId === currentUserId) return "bg-indigo-500";
+  return "bg-red-500";
+}
+
 const HOURS = Array.from({ length: 14 }, (_, i) => 8 + i);
 const WEEKDAYS_FA = [
   "شنبه",
@@ -50,6 +60,7 @@ export default function WeeklyCalendar({
   events = [],
   records = [],
   onAddEvent,
+  currentUserId,
 }: WeeklyCalendarProps) {
   const [currentWeek, setCurrentWeek] = useState<Date>(
     getWeekStart(new Date())
@@ -70,11 +81,13 @@ export default function WeeklyCalendar({
   };
 
   // 🟦 تبدیل داده‌های records شما به رویداد قابل نمایش
-  const recordEvents: CalendarEvent[] = useMemo(() => {
+  const recordEvents = useMemo(() => {
     return records.map((r) => ({
       id: r.id,
       title: r.used ? "استفاده شده" : "رزرو",
       start: new Date(r.date),
+      used: r.used,
+      userId: r.userId,
     }));
   }, [records]);
 
@@ -151,15 +164,16 @@ export default function WeeklyCalendar({
                       key={ev.id}
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className={`absolute inset-0.5 text-white text-[10px] rounded-md p-1 shadow
-                        ${
-                          ev.title === "استفاده شده"
-                            ? "bg-green-600"
-                            : "bg-indigo-500"
-                        }
-                      `}
+                      className={`absolute inset-0.5 text-white text-[10px] rounded-md p-1 shadow ${getRecordColor(
+                        ev,
+                        currentUserId
+                      )}`}
                     >
-                      {ev.title}
+                      {ev.used
+                        ? "استفاده شده"
+                        : ev.userId === currentUserId
+                        ? "رزرو شما"
+                        : "رزرو دیگران"}
                     </motion.div>
                   ))}
                 </div>

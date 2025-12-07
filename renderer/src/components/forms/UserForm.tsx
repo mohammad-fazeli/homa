@@ -17,7 +17,8 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
       id: number;
       date: string;
       used: boolean;
-      usedAt: string;
+      usedAt: string | null;
+      userId: number;
     }[]
   >([]);
 
@@ -29,7 +30,13 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
       setNationalId(user.nationalId || "");
       setSessions(user.course?.totalSessions || 0);
       setCost(user.course?.cost.toLocaleString() || "");
-      setRecords(user.course?.sessions || []);
+      if (user.course?.sessions) {
+        setRecords(
+          user.course.sessions.map((u) => {
+            return { ...u, userId: user.id };
+          })
+        );
+      }
       getUser(user.id);
     } else {
       setFirstName("");
@@ -65,6 +72,29 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
     }
 
     onCancel();
+  };
+
+  const handleAddOrRemoveRecord = (date: Date) => {
+    const iso = date.toISOString();
+
+    const existing = records.find((r) => r.date === iso);
+
+    if (existing) {
+      // حذف با کلیک دوم
+      setRecords((prev) => prev.filter((r) => r.id !== existing.id));
+      return;
+    }
+
+    // اضافه کردن جلسه جدید
+    const newRecord = {
+      id: Date.now(),
+      date: iso,
+      used: false,
+      usedAt: null,
+      userId: user?.id || -1, // ← برای تشخیص رنگ
+    };
+
+    setRecords((prev) => [...prev, newRecord]);
   };
 
   return (
@@ -126,9 +156,7 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
             <button
               type="button"
               onClick={() => setSessions((s) => Math.max(0, s - 1))}
-              className="w-10 h-10 flex items-center justify-center
-                         bg-white border border-slate-300 rounded-xl 
-                         hover:bg-slate-100 transition"
+              className="w-10 h-10 flex items-center justify-center bg-white border border-slate-300 rounded-xl hover:bg-slate-100 transition"
             >
               <Minus size={18} />
             </button>
@@ -140,32 +168,31 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
             <button
               type="button"
               onClick={() => setSessions((s) => s + 1)}
-              className="w-10 h-10 flex items-center justify-center
-                         bg-white border border-slate-300 rounded-xl 
-                         hover:bg-slate-100 transition"
+              className="w-10 h-10 flex items-center justify-center bg-white border border-slate-300 rounded-xl hover:bg-slate-100 transition"
             >
               <Plus size={18} />
             </button>
           </div>
         </div>
-        <WeeklyCalendar records={records} />
+        <WeeklyCalendar
+          records={records}
+          currentUserId={user?.id}
+          onAddEvent={handleAddOrRemoveRecord}
+        />
 
         {/* دکمه‌ها */}
         <div className="flex items-center justify-end gap-4 pt-4">
           <button
             type="button"
             onClick={onCancel}
-            className="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600
-                       hover:bg-slate-100 transition shadow-sm"
+            className="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 transition shadow-sm"
           >
             انصراف
           </button>
 
           <button
             type="submit"
-            className="px-6 py-2.5 rounded-xl text-white 
-                       bg-linear-to-r from-sky-500 to-indigo-600 
-                       shadow-md hover:shadow-lg transition"
+            className="px-6 py-2.5 rounded-xl text-white bg-linear-to-r from-sky-500 to-indigo-600 shadow-md hover:shadow-lg transition"
           >
             ذخیره
           </button>
@@ -180,13 +207,7 @@ function Field({ label, value, onChange, icon }: any) {
     <div className="space-y-1">
       <label className="text-sm text-slate-500">{label}</label>
 
-      <div
-        className="flex items-center gap-2 
-                      rounded-xl border border-slate-300 bg-slate-50
-                      px-3 py-2 
-                      focus-within:border-indigo-500 focus-within:bg-white
-                      transition"
-      >
+      <div className="flex items-center gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 focus-within:border-indigo-500 focus-within:bg-white transition">
         {icon}
         <input
           value={value}
