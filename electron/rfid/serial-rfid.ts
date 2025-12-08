@@ -1,154 +1,181 @@
 // src/rfid/serial-rfid.ts
 
 import { SerialPort, SerialPortOpenOptions } from "serialport";
-import { ReadlineParser } from "@serialport/parser-readline";
 
-// -----------------------------
-// انواع تایپ‌ها
-// -----------------------------
-
-/**
- * گزینه‌های باز کردن پورت سریال
- */
 export interface SerialRFIDOpenOptions {
   baudRate?: number;
-  newline?: string;
+  reconnectDelay?: number; // میلی‌ثانیه تا تلاش بعدی برای reconnect
 }
 
-/**
- * هندلرهای رویدادها
- */
 export type LineCallback = (line: string) => void;
 export type ErrorCallback = (error: Error) => void;
 export type CloseCallback = () => void;
 
-// -----------------------------
-// کلاس اصلی
-// -----------------------------
-
 export class SerialRFID {
   private port: SerialPort | null = null;
-  private parser: ReadlineParser | null = null;
+  private buffer = "";
 
   private _onLine?: LineCallback;
   private _onError?: ErrorCallback;
   private _onClose?: CloseCallback;
 
+  private path: string | null = null;
+  private options: SerialRFIDOpenOptions = {};
+  private reconnecting = false;
+
   constructor() {}
 
-  /**
-   * فهرست کردن پورت‌های قابل استفاده (COM / ttyUSB)
-   */
   public static async listPorts() {
     return await SerialPort.list();
   }
 
-  /**
-   * باز کردن پورت سریال
-   */
-  public open(
-    path: string,
-    options: SerialRFIDOpenOptions = { baudRate: 115200, newline: "\n" }
-  ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      // اگر پورت باز است اول ببندیم
-      if (this.port && this.port.isOpen) {
-        this.port.close();
+  // باز کردن پورت و فعال کردن auto-reconnect
+  public async open(path: string, options: SerialRFIDOpenOptions = {}) {
+    this.path = path;
+    this.options = options;
+
+    await this._openPort();
+  }
+
+  private async _openPort(): Promise<void> {
+    if (!this.path) throw new Error("Serial port path not set");
+
+    const portOptions: SerialPortOpenOptions<any> = {
+      path: this.path,
+      baudRate: this.options.baudRate ?? 9600,
+      autoOpen: false,
+      dataBits: 8,
+      stopBits: 1,
+      parity: "none",
+      lock: false,
+    };
+
+    this.port = new SerialPort(portOptions);
+
+    this.port.open((err) => {
+      if (err) {
+        console.error("❌ Failed to open port:", err);
+        this._scheduleReconnect();
+        return;
       }
 
-      const portOptions: SerialPortOpenOptions<any> = {
-        path,
-        baudRate: options.baudRate ?? 115200,
-        autoOpen: false,
-      };
+      try {
+        this.port!.set({ dtr: true });
+      } catch {}
 
-      this.port = new SerialPort(portOptions);
-
-      // ساخت parser برای خواندن خطی
-      this.parser = this.port.pipe(
-        new ReadlineParser({ delimiter: options.newline ?? "\n" })
-      );
-
-      // تلاش برای باز کردن پورت
-      this.port.open((err) => {
-        if (err) {
-          return reject(err);
-        }
-
-        // دریافت دادهٔ خام (اختیاری)
-        this.port!.on("data", (data: Buffer) => {
-          // اگر لازم داشتید raw bytes را مدیریت کنید
-          // console.log("Raw Data:", data);
-        });
-
-        // دادهٔ پردازش شده (خطی)
-        this.parser!.on("data", (line: string) => {
-          if (this._onLine) this._onLine(line);
-        });
-
-        // خطاها
-        this.port!.on("error", (e: Error) => {
-          if (this._onError) this._onError(e);
-        });
-
-        // بسته شدن پورت
-        this.port!.on("close", () => {
-          if (this._onClose) this._onClose();
-        });
-
-        resolve();
-      });
+      this.port!.on("data", (data: Buffer) => this._handleData(data));
+      this.port!.on("error", (err) => this._handleError(err));
+      this.port!.on("close", () => this._handleClose());
+      console.log("✅ RFID connected to", this.path);
     });
   }
 
-  /**
-   * ثبت رویداد زمانی که یک خط ورودی دریافت شد
-   */
+  private _handleData(data: Buffer) {
+    const text = data.toString("utf8");
+    this.buffer += text;
+
+    let line;
+    while ((line = this._extractLine()) !== null) {
+      if (this._onLine) this._onLine(line);
+    }
+  }
+
+  private _extractLine(): string | null {
+    const rn = this.buffer.indexOf("\r\n");
+    if (rn >= 0) {
+      const line = this.buffer.slice(0, rn);
+      this.buffer = this.buffer.slice(rn + 2);
+      return line.trim();
+    }
+
+    const r = this.buffer.indexOf("\r");
+    if (r >= 0) {
+      const line = this.buffer.slice(0, r);
+      this.buffer = this.buffer.slice(r + 1);
+      return line.trim();
+    }
+
+    const n = this.buffer.indexOf("\n");
+    if (n >= 0) {
+      const line = this.buffer.slice(0, n);
+      this.buffer = this.buffer.slice(n + 1);
+      return line.trim();
+    }
+
+    return null;
+  }
+
+  private _handleError(err: Error) {
+    if (this._onError) this._onError(err);
+    console.error("⚠ Serial port error:", err);
+    this._scheduleReconnect();
+  }
+
+  private _handleClose() {
+    if (this._onClose) this._onClose?.();
+    console.warn("⚠ Serial port closed");
+    this._scheduleReconnect();
+  }
+
+  private _scheduleReconnect() {
+    if (this.reconnecting) return;
+    this.reconnecting = true;
+
+    const delay = this.options.reconnectDelay ?? 1500;
+    console.log(`⏱ Reconnecting in ${delay}ms...`);
+
+    setTimeout(async () => {
+      this.reconnecting = false;
+
+      try {
+        // بررسی اینکه COM هنوز وصل است
+        const ports = await SerialRFID.listPorts();
+        const found = ports.find((p) => p.path === this.path);
+        if (!found) {
+          console.warn("⚠ Device not found, waiting for next retry");
+          this._scheduleReconnect();
+          return;
+        }
+
+        console.log("🔄 Reconnecting to", this.path);
+        await this._openPort();
+      } catch (e) {
+        console.error("❌ Reconnect failed:", e);
+        this._scheduleReconnect();
+      }
+    }, delay);
+  }
+
   public onLine(cb: LineCallback) {
     this._onLine = cb;
   }
 
-  /**
-   * ثبت رویداد خطا
-   */
   public onError(cb: ErrorCallback) {
     this._onError = cb;
   }
 
-  /**
-   * ثبت رویداد بسته‌شدن پورت
-   */
   public onClose(cb: CloseCallback) {
     this._onClose = cb;
   }
 
-  /**
-   * ارسال دستور یا متن به ماژول RFID
-   */
   public writeLine(line: string): Promise<void> {
     if (!this.port || !this.port.isOpen) {
       throw new Error("Serial port is not open.");
     }
 
     return new Promise((resolve, reject) => {
-      this.port!.write(line + "\n", (err) => {
+      this.port!.write(line + "\r\n", (err) => {
         if (err) return reject(err);
-
-        this.port!.drain((err2) => {
-          if (err2) reject(err2);
-          else resolve();
-        });
+        this.port!.drain((err2) => (err2 ? reject(err2) : resolve()));
       });
     });
   }
 
-  /**
-   * بستن پورت
-   */
   public close() {
     if (this.port && this.port.isOpen) {
       this.port.close();
     }
+    this.port = null;
   }
 }
 

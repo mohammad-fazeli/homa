@@ -16,4 +16,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   addUser: (user: UserCreateInput) => ipcRenderer.invoke("add-user", user),
   updateUser: (user: UserUpdateInput) =>
     ipcRenderer.invoke("update-user", user),
+
+  onCardPresent: (callback: (uid: string) => void) => {
+    ipcRenderer.on("rfid-card-present", (_, uid) => callback(uid));
+  },
+  onCardRemoved: (callback: () => void) => {
+    ipcRenderer.on("rfid-card-removed", callback);
+  },
 });
