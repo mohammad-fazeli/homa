@@ -3,6 +3,7 @@ import * as path from "path";
 import dotenv from "dotenv";
 import { registerUserHandlers } from "./ipc/users";
 import { SerialRFID } from "./rfid/serial-rfid";
+import { initDatabase } from "./db";
 
 dotenv.config();
 
@@ -110,9 +111,10 @@ function createWindow() {
   ipcMain.on("window:close", () => win.close());
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   registerUserHandlers();
   createWindow();
+  await initDatabase();
 });
 
 app.on("window-all-closed", () => {

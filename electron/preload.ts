@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import { User } from "./model/UserModel";
+import { UserCreateInput, UserUpdateInput } from "./db/types";
 
 contextBridge.exposeInMainWorld("electronAPI", {
   send: (channel: string, data: any) => ipcRenderer.send(channel, data),
@@ -13,9 +13,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getUsers: (page: number = 1, limit: number = 10) =>
     ipcRenderer.invoke("get-users", page, limit),
   getUser: (userId: number) => ipcRenderer.invoke("get-user", userId),
-  addUser: (user: Omit<User, "id">) => ipcRenderer.invoke("add-user", user),
-  updateUser: (user: User) => ipcRenderer.invoke("update-user", user),
-  deleteUser: (id: number) => ipcRenderer.invoke("delete-user", id),
-  decreaseUserSessions: (userId: number, change: number) =>
-    ipcRenderer.invoke("decrease-user-sessions", userId, change),
+  addUser: (user: UserCreateInput) => ipcRenderer.invoke("add-user", user),
+  updateUser: (user: UserUpdateInput) =>
+    ipcRenderer.invoke("update-user", user),
 });
