@@ -1,134 +1,172 @@
-import { Session } from "./Session";
-import { Course } from "./Course";
+import { db } from "../";
 import {
   SessionCreateInput,
   SessionUpdateInput,
   SessionResult,
 } from "../types";
 
+// Helper: map DB row → SessionResult
+function mapSession(row: any): SessionResult {
+  return {
+    id: row.id,
+    courseId: row.courseId,
+    date: row.date,
+    used: !!row.used,
+    usedAt: row.usedAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
 export const SessionModel = {
   // -------------------------
   // CREATE
   // -------------------------
-  async create(data: SessionCreateInput): Promise<SessionResult> {
-    const s = await Session.create(data);
-    return s.toJSON() as SessionResult;
+  create(data: SessionCreateInput): SessionResult {
+    const stmt = db.prepare(`
+      INSERT INTO Sessions (courseId, date, used, usedAt, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `);
+
+    const result = stmt.run(
+      data.courseId,
+      data.date,
+      data.used ?? 0,
+      data.usedAt ?? null
+    );
+
+    return this.findById(result.lastInsertRowid as number)!;
   },
 
   // -------------------------
   // FIND BY ID
   // -------------------------
-  async findById(id: number): Promise<SessionResult | null> {
-    const s = await Session.findByPk(id);
-    return s ? (s.toJSON() as SessionResult) : null;
+  findById(id: number): SessionResult | null {
+    const row = db.prepare(`SELECT * FROM Sessions WHERE id = ?`).get(id);
+    return row ? mapSession(row) : null;
   },
 
   // -------------------------
   // FIND BY COURSE
   // -------------------------
-  async findByCourse(courseId: number): Promise<SessionResult[]> {
-    const sessions = await Session.findAll({
-      where: { courseId },
-      order: [["date", "ASC"]],
-    });
+  findByCourse(courseId: number): SessionResult[] {
+    const rows = db
+      .prepare(`SELECT * FROM Sessions WHERE courseId = ? ORDER BY date ASC`)
+      .all(courseId);
 
-    return sessions.map((s) => s.toJSON() as SessionResult);
+    return rows.map(mapSession);
   },
 
   // -------------------------
-  // FIND BY USER
-  // (Sessions JOIN Courses)
+  // FIND BY USER  (JOIN)
+  // Sessions JOIN Courses
   // -------------------------
-  async findByUser(userId: number): Promise<SessionResult[]> {
-    const sessions = await Session.findAll({
-      include: [
-        {
-          model: Course,
-          where: { userId },
-          required: true,
-        },
-      ],
-      order: [["date", "ASC"]],
-    });
+  findByUser(userId: number): SessionResult[] {
+    const rows = db
+      .prepare(
+        `
+        SELECT s.*
+        FROM Sessions s
+        JOIN Courses c ON s.courseId = c.id
+        WHERE c.userId = ?
+        ORDER BY s.date ASC
+      `
+      )
+      .all(userId);
 
-    return sessions.map((s) => s.toJSON() as SessionResult);
+    return rows.map(mapSession);
   },
 
   // -------------------------
-  // FIND UNUSED (used = false)
+  // FIND UNUSED
   // -------------------------
-  async findUnused(): Promise<SessionResult[]> {
-    const sessions = await Session.findAll({
-      where: { used: false },
-      order: [["date", "ASC"]],
-    });
+  findUnused(): SessionResult[] {
+    const rows = db
+      .prepare(`SELECT * FROM Sessions WHERE used = 0 ORDER BY date ASC`)
+      .all();
 
-    return sessions.map((s) => s.toJSON() as SessionResult);
+    return rows.map(mapSession);
   },
 
   // -------------------------
   // FIND UNUSED BY USER
   // -------------------------
-  async findUnusedByUser(userId: number): Promise<SessionResult[]> {
-    const sessions = await Session.findAll({
-      where: { used: false },
-      include: [
-        {
-          model: Course,
-          where: { userId },
-          required: true,
-        },
-      ],
-      order: [["date", "ASC"]],
-    });
+  findUnusedByUser(userId: number): SessionResult[] {
+    const rows = db
+      .prepare(
+        `
+        SELECT s.*
+        FROM Sessions s
+        JOIN Courses c ON s.courseId = c.id
+        WHERE s.used = 0 AND c.userId = ?
+        ORDER BY s.date ASC
+      `
+      )
+      .all(userId);
 
-    return sessions.map((s) => s.toJSON() as SessionResult);
+    return rows.map(mapSession);
   },
 
   // -------------------------
   // MARK AS USED
   // -------------------------
-  async markUsed(id: number): Promise<SessionResult | null> {
-    const s = await Session.findByPk(id);
-    if (!s) return null;
+  markUsed(id: number): SessionResult | null {
+    const session = this.findById(id);
+    if (!session) return null;
 
-    await s.update({
-      used: true,
-      usedAt: new Date(),
-    });
+    db.prepare(
+      `
+      UPDATE Sessions
+      SET used = 1,
+          usedAt = CURRENT_TIMESTAMP,
+          updatedAt = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `
+    ).run(id);
 
-    return s.toJSON() as SessionResult;
+    return this.findById(id);
   },
 
   // -------------------------
-  // UPDATE (partial)
+  // UPDATE PARTIAL
   // -------------------------
-  async update(
-    id: number,
-    data: SessionUpdateInput
-  ): Promise<SessionResult | null> {
-    const s = await Session.findByPk(id);
-    if (!s) return null;
+  update(id: number, data: SessionUpdateInput): SessionResult | null {
+    const exists = this.findById(id);
+    if (!exists) return null;
 
-    await s.update(data);
-    return s.toJSON() as SessionResult;
+    const existing = this.findById(id)!;
+
+    const merged = {
+      courseId: data.courseId ?? existing.courseId,
+      date: data.date ?? existing.date,
+      used: data.used ?? existing.used,
+      usedAt: data.usedAt ?? existing.usedAt,
+    };
+
+    db.prepare(
+      `
+      UPDATE Sessions
+      SET courseId = ?, date = ?, used = ?, usedAt = ?, updatedAt = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `
+    ).run(merged.courseId, merged.date, merged.used, merged.usedAt, id);
+
+    return this.findById(id);
   },
 
   // -------------------------
   // DELETE
   // -------------------------
-  async delete(id: number): Promise<void> {
-    await Session.destroy({ where: { id } });
+  delete(id: number) {
+    db.prepare(`DELETE FROM Sessions WHERE id = ?`).run(id);
   },
 
   // -------------------------
-  // ALL SESSIONS
+  // ALL
   // -------------------------
-  async all(): Promise<SessionResult[]> {
-    const sessions = await Session.findAll({
-      order: [["date", "ASC"]],
-    });
+  all(): SessionResult[] {
+    const rows = db.prepare(`SELECT * FROM Sessions ORDER BY date ASC`).all();
 
-    return sessions.map((s) => s.toJSON() as SessionResult);
+    return rows.map(mapSession);
   },
 };

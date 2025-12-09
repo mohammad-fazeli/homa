@@ -1,11 +1,14 @@
 // src/database/seed.ts
-import { User } from "./models/User";
-import { Course } from "./models/Course";
-import { Session } from "./models/Session";
+import { db } from "./"; // اتصال better-sqlite3
+import { UserModel } from "./models/UserModel";
+import { CourseModel } from "./models/CourseModel";
+import { SessionModel } from "./models/SessionModel";
 
-export async function seedDatabase() {
-  const count = await User.count();
-  if (count > 0) return;
+export function seedDatabase() {
+  // اگر کاربر وجود دارد، seed اجرا نشود
+  const userCount = (db.prepare("SELECT COUNT(*) AS c FROM Users").get() as any)
+    .c;
+  if (userCount > 0) return;
 
   console.log("🌱 Seeding development DB...");
 
@@ -27,41 +30,40 @@ export async function seedDatabase() {
     ["کیان", "مختاری", "09120000015", "0011223466"],
   ];
 
-  const users = await Promise.all(
-    sampleUsers.map((u) =>
-      User.create({
-        firstName: u[0],
-        lastName: u[1],
-        phone: u[2],
-        nationalId: u[3],
-      })
-    )
+  // ایجاد کاربران
+  const createdUsers = sampleUsers.map((u) =>
+    UserModel.create({
+      firstName: u[0],
+      lastName: u[1],
+      phone: u[2],
+      nationalId: u[3],
+    })
   );
 
-  const course1 = await Course.create({
-    userId: users[14].id,
+  const lastUser = createdUsers[14];
+  const anotherUser = createdUsers[13];
+
+  if (!lastUser) return;
+  if (!anotherUser) return;
+
+  // ایجاد دوره‌ها
+  const course1 = CourseModel.create({
+    userId: lastUser.id,
     cost: 400000,
     sessions: 0,
   });
 
-  const course2 = await Course.create({
-    userId: users[14].id,
+  const course2 = CourseModel.create({
+    userId: lastUser.id,
     cost: 500000,
     sessions: 10,
   });
 
-  const course3 = await Course.create({
-    userId: users[13].id,
+  const course3 = CourseModel.create({
+    userId: anotherUser.id,
     cost: 400000,
     sessions: 8,
   });
-
-  await Session.bulkCreate([
-    { courseId: course1.id, date: new Date(), used: false },
-    { courseId: course1.id, date: new Date(), used: true },
-    { courseId: course2.id, date: new Date(), used: false },
-    { courseId: course2.id, date: new Date(), used: true },
-  ]);
 
   console.log("✅ Seeding Completed");
 }

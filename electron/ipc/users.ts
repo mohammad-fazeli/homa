@@ -14,6 +14,7 @@ export function registerUserHandlers() {
       sessions?: Date[]
     ) => {
       const newUser = await UserModel.create(user);
+      if (!newUser) return;
       if (course) {
         const newCourse = await CourseModel.create({
           ...course,

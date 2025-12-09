@@ -1,7 +1,4 @@
-import { Op } from "sequelize";
-import { User } from "./User";
-import { Course } from "./Course";
-import { Session } from "./Session";
+import { db } from "../";
 import {
   UserCreateInput,
   UserUpdateInput,
@@ -10,47 +7,108 @@ import {
   UserFindByIdResult,
 } from "../types";
 
+/**
+ * تبدیل نتیجه DB به User مدل
+ */
+function mapUser(row: any) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    firstName: row.firstName,
+    lastName: row.lastName,
+    phone: row.phone,
+    nationalId: row.nationalId,
+  };
+}
+
 export const UserModel = {
-  async findAll(page = 1, limit = 15, search = ""): Promise<UserFindAllResult> {
+  // ================================
+  // FIND ALL (search + pagination)
+  // ================================
+  findAll(page = 1, limit = 15, search = ""): UserFindAllResult {
     const offset = (page - 1) * limit;
 
-    let where: any = {};
-    if (search.trim()) {
-      where = {
-        [Op.or]: [
-          { firstName: { [Op.like]: `%${search}%` } },
-          { lastName: { [Op.like]: `%${search}%` } },
-          { phone: { [Op.like]: `%${search}%` } },
-          { nationalId: { [Op.like]: `%${search}%` } },
-        ],
-      };
-    }
+    const searchQuery = search.trim() ? `%${search.trim()}%` : null;
 
-    const total = await User.count({ where });
+    // Count
+    const totalStmt = searchQuery
+      ? db.prepare(`
+          SELECT COUNT(*) AS count
+          FROM Users
+          WHERE firstName LIKE ? OR lastName LIKE ? OR phone LIKE ? OR nationalId LIKE ?
+        `)
+      : db.prepare(`SELECT COUNT(*) AS count FROM Users`);
 
-    const users = await User.findAll({
-      where,
-      limit,
-      offset,
-      order: [["id", "DESC"]],
-      include: [
-        {
-          model: Course,
-          limit: 1,
-          order: [["id", "DESC"]],
-          include: [
-            {
-              model: Session,
-              limit: 1,
-              order: [["date", "ASC"]],
-            },
-          ],
-        },
-      ],
-    });
+    const total = searchQuery
+      ? (
+          totalStmt.get(
+            searchQuery,
+            searchQuery,
+            searchQuery,
+            searchQuery
+          ) as any
+        ).count
+      : (totalStmt.get() as any).count;
 
+    // Fetch users
+    const usersStmt = searchQuery
+      ? db.prepare(`
+          SELECT * FROM Users
+          WHERE firstName LIKE ? OR lastName LIKE ? OR phone LIKE ? OR nationalId LIKE ?
+          ORDER BY id DESC
+          LIMIT ? OFFSET ?
+        `)
+      : db.prepare(`
+          SELECT * FROM Users
+          ORDER BY id DESC
+          LIMIT ? OFFSET ?
+        `);
+
+    const users = searchQuery
+      ? usersStmt.all(
+          searchQuery,
+          searchQuery,
+          searchQuery,
+          searchQuery,
+          limit,
+          offset
+        )
+      : usersStmt.all(limit, offset);
+
+    // Attach course summary for each user
     const data: UserFindAllItem[] = users.map((u: any) => {
-      const course = u.Courses?.[0];
+      const course: any = db
+        .prepare(
+          `
+          SELECT * FROM Courses
+          WHERE userId = ?
+          ORDER BY id DESC
+          LIMIT 1
+        `
+        )
+        .get(u.id);
+
+      if (!course) {
+        return {
+          id: u.id,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          phone: u.phone,
+          nationalId: u.nationalId,
+          course: null,
+        };
+      }
+
+      const nextSession: any = db
+        .prepare(
+          `
+          SELECT date FROM Sessions
+          WHERE courseId = ?
+          ORDER BY date ASC
+          LIMIT 1
+        `
+        )
+        .get(course.id);
 
       return {
         id: u.id,
@@ -58,15 +116,13 @@ export const UserModel = {
         lastName: u.lastName,
         phone: u.phone,
         nationalId: u.nationalId,
-        course: course
-          ? {
-              id: course.id,
-              userId: course.userId,
-              cost: course.cost,
-              totalSessions: course.sessions,
-              nextSessionDate: course.Sessions?.[0]?.date ?? null,
-            }
-          : null,
+        course: {
+          id: course.id,
+          userId: course.userId,
+          cost: course.cost,
+          totalSessions: course.sessions,
+          nextSessionDate: nextSession?.date ?? null,
+        },
       };
     });
 
@@ -79,15 +135,23 @@ export const UserModel = {
     };
   },
 
-  async findById(id: number): Promise<UserFindByIdResult | null> {
-    const user = await User.findByPk(id);
+  // ================================
+  // FIND BY ID (with course + sessions)
+  // ================================
+  findById(id: number): UserFindByIdResult | null {
+    const user: any = db.prepare(`SELECT * FROM Users WHERE id = ?`).get(id);
     if (!user) return null;
 
-    const course: any = await Course.findOne({
-      where: { userId: id },
-      order: [["id", "DESC"]],
-      include: [{ model: Session, order: [["date", "ASC"]] }],
-    });
+    const course: any = db
+      .prepare(
+        `
+        SELECT * FROM Courses
+        WHERE userId = ?
+        ORDER BY id DESC
+        LIMIT 1
+      `
+      )
+      .get(id);
 
     if (!course) {
       return {
@@ -100,6 +164,16 @@ export const UserModel = {
       };
     }
 
+    const sessions = db
+      .prepare(
+        `
+        SELECT * FROM Sessions
+        WHERE courseId = ?
+        ORDER BY date ASC
+      `
+      )
+      .all(course.id);
+
     return {
       id: user.id,
       firstName: user.firstName,
@@ -110,7 +184,7 @@ export const UserModel = {
         id: course.id,
         cost: course.cost,
         totalSessions: course.sessions,
-        sessions: course.Sessions.map((s: any) => ({
+        sessions: sessions.map((s: any) => ({
           id: s.id,
           date: s.date,
           used: !!s.used,
@@ -120,18 +194,47 @@ export const UserModel = {
     };
   },
 
-  async create(data: UserCreateInput) {
-    return await User.create(data);
+  // ================================
+  // CREATE USER
+  // ================================
+  create(data: UserCreateInput) {
+    const stmt = db.prepare(`
+      INSERT INTO Users (firstName, lastName, phone, nationalId)
+      VALUES (?, ?, ?, ?)
+    `);
+
+    const result = stmt.run(
+      data.firstName,
+      data.lastName,
+      data.phone,
+      data.nationalId
+    );
+
+    return this.findById(result.lastInsertRowid as number);
   },
 
-  async update(data: UserUpdateInput) {
-    const user = await User.findByPk(data.id);
+  // ================================
+  // UPDATE USER
+  // ================================
+  update(data: UserUpdateInput) {
+    const user = this.findById(data.id);
     if (!user) return null;
 
-    return user.update(data);
+    db.prepare(
+      `
+    UPDATE Users
+    SET firstName = ?, lastName = ?, phone = ?, nationalId = ?
+    WHERE id = ?
+  `
+    ).run(data.firstName, data.lastName, data.phone, data.nationalId, data.id);
+
+    return this.findById(data.id);
   },
 
-  async delete(id: number) {
-    return User.destroy({ where: { id } });
+  // ================================
+  // DELETE USER
+  // ================================
+  delete(id: number) {
+    return db.prepare(`DELETE FROM Users WHERE id = ?`).run(id).changes;
   },
 };
