@@ -5,6 +5,7 @@ import {
   UserFindAllItem,
   UserFindAllResult,
   UserFindByIdResult,
+  UserCourseSummary,
 } from "../types";
 
 /**
@@ -22,21 +23,19 @@ function mapUser(row: any) {
 }
 
 export const UserModel = {
-  // ================================
-  // FIND ALL (search + pagination)
-  // ================================
   findAll(page = 1, limit = 15, search = ""): UserFindAllResult {
     const offset = (page - 1) * limit;
-
     const searchQuery = search.trim() ? `%${search.trim()}%` : null;
 
-    // Count
+    // ============================
+    // Count Users
+    // ============================
     const totalStmt = searchQuery
       ? db.prepare(`
-          SELECT COUNT(*) AS count
-          FROM Users
-          WHERE firstName LIKE ? OR lastName LIKE ? OR phone LIKE ? OR nationalId LIKE ?
-        `)
+        SELECT COUNT(*) AS count
+        FROM Users
+        WHERE firstName LIKE ? OR lastName LIKE ? OR phone LIKE ? OR nationalId LIKE ?
+      `)
       : db.prepare(`SELECT COUNT(*) AS count FROM Users`);
 
     const total = searchQuery
@@ -50,19 +49,23 @@ export const UserModel = {
         ).count
       : (totalStmt.get() as any).count;
 
-    // Fetch users
+    // ============================
+    // Fetch Users
+    // ============================
     const usersStmt = searchQuery
       ? db.prepare(`
-          SELECT * FROM Users
-          WHERE firstName LIKE ? OR lastName LIKE ? OR phone LIKE ? OR nationalId LIKE ?
-          ORDER BY id DESC
-          LIMIT ? OFFSET ?
-        `)
+        SELECT *
+        FROM Users
+        WHERE firstName LIKE ? OR lastName LIKE ? OR phone LIKE ? OR nationalId LIKE ?
+        ORDER BY id DESC
+        LIMIT ? OFFSET ?
+      `)
       : db.prepare(`
-          SELECT * FROM Users
-          ORDER BY id DESC
-          LIMIT ? OFFSET ?
-        `);
+        SELECT *
+        FROM Users
+        ORDER BY id DESC
+        LIMIT ? OFFSET ?
+      `);
 
     const users = searchQuery
       ? usersStmt.all(
@@ -75,40 +78,53 @@ export const UserModel = {
         )
       : usersStmt.all(limit, offset);
 
-    // Attach course summary for each user
+    // ============================
+    // Build Result
+    // ============================
     const data: UserFindAllItem[] = users.map((u: any) => {
+      // آخرین دوره کاربر
       const course: any = db
         .prepare(
           `
-          SELECT * FROM Courses
-          WHERE userId = ?
-          ORDER BY id DESC
-          LIMIT 1
-        `
+        SELECT id, userId, cost, sessions
+        FROM Courses
+        WHERE userId = ?
+        ORDER BY id DESC
+        LIMIT 1
+      `
         )
         .get(u.id);
 
-      if (!course) {
-        return {
-          id: u.id,
-          firstName: u.firstName,
-          lastName: u.lastName,
-          phone: u.phone,
-          nationalId: u.nationalId,
-          course: null,
-        };
-      }
+      let courseSummary: UserCourseSummary = {
+        id: 0,
+        userId: u.id,
+        cost: 0,
+        totalSessions: 0,
+        nextSessionDate: null,
+      };
 
-      const nextSession: any = db
-        .prepare(
-          `
-          SELECT date FROM Sessions
+      if (course) {
+        // تاریخ اولین جلسه آتی
+        const nextSession: any = db
+          .prepare(
+            `
+          SELECT date
+          FROM Sessions
           WHERE courseId = ?
           ORDER BY date ASC
           LIMIT 1
         `
-        )
-        .get(course.id);
+          )
+          .get(course.id);
+
+        courseSummary = {
+          id: course.id,
+          userId: course.userId,
+          cost: course.cost,
+          totalSessions: course.sessions,
+          nextSessionDate: nextSession?.date ?? null,
+        };
+      }
 
       return {
         id: u.id,
@@ -116,13 +132,7 @@ export const UserModel = {
         lastName: u.lastName,
         phone: u.phone,
         nationalId: u.nationalId,
-        course: {
-          id: course.id,
-          userId: course.userId,
-          cost: course.cost,
-          totalSessions: course.sessions,
-          nextSessionDate: nextSession?.date ?? null,
-        },
+        course: courseSummary,
       };
     });
 
@@ -134,7 +144,6 @@ export const UserModel = {
       totalPages: Math.ceil(total / limit),
     };
   },
-
   // ================================
   // FIND BY ID (with course + sessions)
   // ================================

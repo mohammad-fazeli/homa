@@ -1,7 +1,16 @@
 import { useState, useEffect } from "react";
 import { useUsersStore } from "../../store/users";
-import { CreditCard, User, Phone, IdCard, Plus, Minus } from "lucide-react";
+import {
+  CreditCard,
+  User,
+  Phone,
+  IdCard,
+  Plus,
+  Minus,
+  ArrowLeft,
+} from "lucide-react";
 import WeeklyCalendar from "../WeeklyCalendarComponent.";
+import { Link } from "react-router-dom";
 
 export default function UserForm({ onCancel }: { onCancel: () => void }) {
   const { user, editingUser, addUser, updateUser, getUser } = useUsersStore();
@@ -15,9 +24,9 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
   const [records, setRecords] = useState<
     {
       id: number;
-      date: string;
+      date: string | Date;
       used: boolean;
-      usedAt: string | null;
+      usedAt: string | Date | null;
       userId: number;
     }[]
   >([]);
@@ -100,15 +109,23 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
   return (
     <div className="bg-white shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-3xl p-10 max-w-4xl mx-auto border border-slate-100">
       {/* هدر */}
-      <div className="mb-10">
-        <h2 className="text-2xl font-bold bg-linear-to-r from-indigo-600 to-sky-500 bg-clip-text text-transparent">
-          {editingUser ? "ویرایش مشتری" : "مشتری جدید"}
-        </h2>
-        <p className="text-slate-500 mt-1 text-sm">
-          اطلاعات مشتری را وارد کنید
-        </p>
+      <div className="mb-10 flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold bg-linear-to-r from-indigo-600 to-sky-500 bg-clip-text text-transparent">
+            {editingUser ? "ویرایش مشتری" : "مشتری جدید"}
+          </h2>
+          <p className="text-slate-500 mt-1 text-sm">
+            اطلاعات مشتری را وارد کنید
+          </p>
+        </div>
+        <Link
+          to="/users"
+          className="inline-flex items-center gap-2 bg-linear-to-r from-sky-500 to-indigo-600 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg cursor-pointer"
+        >
+          بازگشت
+          <ArrowLeft size={16} />
+        </Link>
       </div>
-
       <form onSubmit={submit} className="space-y-8">
         {/* فیلدها */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

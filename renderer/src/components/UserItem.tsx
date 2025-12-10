@@ -1,11 +1,11 @@
 import React from "react";
-import { UserType } from "../global";
 import { Edit2, Eye, MinusCircle, PlusCircle, User } from "lucide-react";
 import { useUsersStore } from "../store/users";
 import { useNavigate } from "react-router-dom";
+import { UserFindAllItem } from "../global";
 
 interface UserItemProps {
-  user: UserType;
+  user: UserFindAllItem;
 }
 
 const UserItem: React.FC<UserItemProps> = ({ user }) => {

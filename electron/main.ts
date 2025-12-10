@@ -54,10 +54,10 @@ function createWindow() {
   registerRfidHandlers(win);
 }
 
-app.whenReady().then(async () => {
+app.whenReady().then(() => {
   registerUserHandlers();
   createWindow();
-  await initDatabase();
+  initDatabase();
 });
 
 app.on("window-all-closed", () => {

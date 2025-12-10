@@ -1,9 +1,14 @@
 import { create } from "zustand";
-import { SessionLogType, UserType } from "../global";
+import {
+  UserCreateInput,
+  UserFindAllItem,
+  UserFindByIdResult,
+  UserUpdateInput,
+} from "../global";
 
 interface UsersStore {
-  users: UserType[];
-  user: UserType | null;
+  users: UserFindAllItem[];
+  user: UserFindByIdResult | null;
   total: number;
   page: number;
   limit: number;
@@ -11,22 +16,21 @@ interface UsersStore {
   query: string;
   isLoading: boolean;
 
-  sessionLog: SessionLogType[] | null;
   editingUser: boolean;
   deleteUserId: number | null;
 
   setPage: (p: number) => void;
   setTotalPages: (p: number) => void;
   setQuery: (q: string) => void;
-  setUser: (v: UserType | null) => void;
-  setSessionLog: (v: SessionLogType[] | null) => void;
+  setUser: (v: UserFindByIdResult | null) => void;
+
   setEditingUser: (u: boolean) => void;
   setDeleteUserId: (id: number | null) => void;
 
   loadUsers: () => Promise<void>;
   getUser: (id: number) => Promise<void>;
-  addUser: (payload: Omit<UserType, "id">) => Promise<void>;
-  updateUser: (payload: UserType) => Promise<void>;
+  addUser: (payload: UserCreateInput) => Promise<void>;
+  updateUser: (payload: UserUpdateInput) => Promise<void>;
   deleteUser: (id: number) => Promise<void>;
   changeSessions: (id: number, delta: number) => Promise<void>;
 }
@@ -49,7 +53,6 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
   setTotalPages: (p) => set({ totalPages: p }),
   setQuery: (q) => set({ query: q }),
   setUser: (u) => set({ user: u }),
-  setSessionLog: (u) => set({ sessionLog: u }),
   setEditingUser: (u) => set({ editingUser: u }),
   setDeleteUserId: (id) => set({ deleteUserId: id }),
 
@@ -57,6 +60,7 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
     set({ isLoading: true });
     try {
       const data = await window.electronAPI?.getUsers(get().page, get().limit);
+      console.log("🚀 ~ data:", data);
       set({
         users: data?.data ?? [],
         total: data?.total,

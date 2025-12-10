@@ -1,12 +1,12 @@
 import React from "react";
-import { UserType } from "../global";
+import { UserFindAllItem } from "../global";
 import UserItem from "./UserItem";
 import Pagination from "./Pagination";
 import { useUsersStore } from "../store/users";
 
 interface UsersListProps {
   isLoading: boolean;
-  users: UserType[];
+  users: UserFindAllItem[];
 }
 
 const UsersList: React.FC<UsersListProps> = ({ isLoading, users }) => {

@@ -4,9 +4,9 @@ import { motion } from "framer-motion";
 
 type RecordItem = {
   id: number;
-  date: string;
+  date: string | Date;
   used: boolean;
-  usedAt: string | null;
+  usedAt: string | Date | null;
   userId: number;
 };
 

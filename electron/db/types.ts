@@ -81,7 +81,7 @@ export interface UserFindAllItem {
   lastName: string;
   phone: string;
   nationalId: string;
-  course: UserCourseSummary | null;
+  course: UserCourseSummary;
 }
 
 export interface UserFindAllResult {
