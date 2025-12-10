@@ -1,3 +1,10 @@
+export interface UserAttributes {
+  id: number;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  nationalId: string;
+}
 export interface UserCourseSummary {
   id: number;
   userId: number;
@@ -18,7 +25,7 @@ export interface UserFindAllItem {
 export interface UserCourseSessionItem {
   id: number;
   date: string | Date;
-  used: boolean;
+  used: 0 | 1;
   usedAt: string | Date | null;
 }
 
@@ -55,8 +62,8 @@ export type RendererElectronAPI = {
   addUser: (
     user: UserCreateInput,
     course?: { cost: number; sessions: number },
-    sessions?: Date[]
-  ) => Promise<UserFindAllResult>;
+    sessions?: string[]
+  ) => Promise<UserFindByIdResult>;
   getUser: (userid: number) => Promise<UserFindByIdResult>;
   getUsers: (page: number, limit: number) => Promise<UserFindAllResult>;
   updateUser: (user: UserUpdateInput) => Promise<UserFindByIdResult>;

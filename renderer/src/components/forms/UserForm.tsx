@@ -77,7 +77,16 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
     if (user && user.id) {
       updateUser({ ...payload, id: user.id });
     } else {
-      addUser(payload);
+      addUser(
+        {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          phone: phone.trim(),
+          nationalId: nationalId.trim(),
+        },
+        { sessions, cost: parseInt(cost) },
+        records.map((r) => r.date.toString())
+      );
     }
 
     onCancel();

@@ -43,7 +43,7 @@ export interface SessionAttributes {
   id: number;
   courseId: number;
   date: string | Date;
-  used: boolean;
+  used: 0 | 1;
   usedAt: string | Date | null;
   createdAt?: Date;
   updatedAt?: Date;
@@ -97,7 +97,7 @@ export interface UserFindAllResult {
 export interface UserCourseSessionItem {
   id: number;
   date: string | Date;
-  used: boolean;
+  used: 0 | 1;
   usedAt: string | Date | null;
 }
 

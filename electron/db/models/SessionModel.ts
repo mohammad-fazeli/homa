@@ -11,7 +11,7 @@ function mapSession(row: any): SessionResult {
     id: row.id,
     courseId: row.courseId,
     date: row.date,
-    used: !!row.used,
+    used: row.used,
     usedAt: row.usedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

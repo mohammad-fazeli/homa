@@ -13,7 +13,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getUsers: (page: number = 1, limit: number = 10) =>
     ipcRenderer.invoke("get-users", page, limit),
   getUser: (userId: number) => ipcRenderer.invoke("get-user", userId),
-  addUser: (user: UserCreateInput) => ipcRenderer.invoke("add-user", user),
+  addUser: (
+    user: UserCreateInput,
+    course?: { cost: number; sessions: number },
+    sessions?: string[]
+  ) => ipcRenderer.invoke("add-user", user, course, sessions),
   updateUser: (user: UserUpdateInput) =>
     ipcRenderer.invoke("update-user", user),
 

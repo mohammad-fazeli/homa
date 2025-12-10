@@ -29,7 +29,11 @@ interface UsersStore {
 
   loadUsers: () => Promise<void>;
   getUser: (id: number) => Promise<void>;
-  addUser: (payload: UserCreateInput) => Promise<void>;
+  addUser: (
+    user: UserCreateInput,
+    course?: { cost: number; sessions: number },
+    sessions?: string[]
+  ) => Promise<void>;
   updateUser: (payload: UserUpdateInput) => Promise<void>;
   deleteUser: (id: number) => Promise<void>;
   changeSessions: (id: number, delta: number) => Promise<void>;
@@ -60,7 +64,6 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
     set({ isLoading: true });
     try {
       const data = await window.electronAPI?.getUsers(get().page, get().limit);
-      console.log("🚀 ~ data:", data);
       set({
         users: data?.data ?? [],
         total: data?.total,
@@ -74,13 +77,18 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
     }
   },
 
-  addUser: async (payload) => {
-    await window.electronAPI?.addUser?.(payload);
+  addUser: async (
+    user: UserCreateInput,
+    course?: { cost: number; sessions: number },
+    sessions?: string[]
+  ) => {
+    await window.electronAPI?.addUser(user, course, sessions);
     await get().loadUsers();
   },
 
   getUser: async (userId) => {
     const result = await window.electronAPI?.getUser(userId);
+    console.log("🚀 ~ result:", result);
     if (!result) return;
     set({
       user: result,

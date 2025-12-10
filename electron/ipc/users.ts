@@ -16,7 +16,7 @@ export function registerUserHandlers() {
       event,
       user: UserCreateInput,
       course?: { cost: number; sessions: number },
-      sessions?: Date[]
+      sessions?: string[]
     ): Promise<UserFindByIdResult> => {
       const newUser = await UserModel.create(user);
       if (!newUser) throw new Error("کاربر یافت نشد");
@@ -27,14 +27,16 @@ export function registerUserHandlers() {
           userId: newUser.id,
         });
 
-        sessions?.forEach((session) => {
-          SessionModel.create({
-            courseId: newCourse.id,
-            date: session,
-            used: false,
-            usedAt: null,
-          });
-        });
+        if (sessions && sessions.length > 0) {
+          for (const session of sessions) {
+            await SessionModel.create({
+              courseId: newCourse.id,
+              date: session,
+              used: 0,
+              usedAt: null,
+            });
+          }
+        }
       }
       return newUser;
     }

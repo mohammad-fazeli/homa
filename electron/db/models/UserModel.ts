@@ -196,7 +196,7 @@ export const UserModel = {
         sessions: sessions.map((s: any) => ({
           id: s.id,
           date: s.date,
-          used: !!s.used,
+          used: s.used,
           usedAt: s.usedAt,
         })),
       },
