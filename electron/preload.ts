@@ -9,7 +9,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   minimize: () => ipcRenderer.send("window:minimize"),
   maximize: () => ipcRenderer.send("window:maximize"),
   close: () => ipcRenderer.send("window:close"),
-
+  //user
   getUsers: (page: number = 1, limit: number = 10) =>
     ipcRenderer.invoke("get-users", page, limit),
   getUser: (userId: number) => ipcRenderer.invoke("get-user", userId),
@@ -20,11 +20,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   ) => ipcRenderer.invoke("add-user", user, course, sessions),
   updateUser: (user: UserUpdateInput) =>
     ipcRenderer.invoke("update-user", user),
-
-  onCardPresent: (callback: (uid: string) => void) => {
-    ipcRenderer.on("rfid-card-present", (_, uid) => callback(uid));
-  },
-  onCardRemoved: (callback: () => void) => {
-    ipcRenderer.on("rfid-card-removed", callback);
-  },
+  //calender
+  getCalender: (start: string | Date, end: string | Date) =>
+    ipcRenderer.invoke("get-calender", start, end),
 });

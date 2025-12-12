@@ -1,9 +1,8 @@
 import { BrowserWindow, ipcMain } from "electron";
 import SerialRFID from "../rfid/serial-rfid";
 
-const rfid = new SerialRFID();
-
 export async function registerRfidHandlers(win: BrowserWindow) {
+  const rfid = new SerialRFID();
   const ports = await SerialRFID.listPorts();
   if (ports.length === 0) return console.error("No RFID port found");
   const port = ports[0].path;

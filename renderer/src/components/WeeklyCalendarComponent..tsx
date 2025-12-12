@@ -1,11 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
+import { useCalendarStore } from "../store/calendar";
 
 type RecordItem = {
   id: number;
   date: string | Date;
-  used: boolean;
+  used: 0 | 1;
   usedAt: string | Date | null;
   userId: number;
 };
@@ -14,13 +15,12 @@ type CalendarEvent = {
   id: number;
   title: string;
   start: Date;
-  used?: boolean;
+  used?: 0 | 1;
   userId?: number;
 };
 
 interface WeeklyCalendarProps {
   records?: RecordItem[];
-  events?: CalendarEvent[];
   currentUserId?: number; // ← اضافه شد
   onAddEvent?: (date: Date) => void;
 }
@@ -57,7 +57,6 @@ const WEEKDAYS_FA = [
 ];
 
 export default function WeeklyCalendar({
-  events = [],
   records = [],
   onAddEvent,
   currentUserId,
@@ -65,6 +64,15 @@ export default function WeeklyCalendar({
   const [currentWeek, setCurrentWeek] = useState<Date>(
     getWeekStart(new Date())
   );
+  const { loadEvents, allEvents: Ev } = useCalendarStore();
+
+  useEffect(() => {
+    const d = new Date(currentWeek);
+    const day = d.getDay();
+    const diff = (day + 1) % 7; // Saturday = 0
+    d.setDate(d.getDate() - diff + 7);
+    loadEvents(currentWeek.toString(), d.toString());
+  }, []);
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(currentWeek, i));
 
@@ -92,7 +100,7 @@ export default function WeeklyCalendar({
   }, [records]);
 
   // 🟦 ترکیب رویدادهای معمولی + داده‌های شما
-  const allEvents = [...events, ...recordEvents];
+  const allEvents = [...Ev, ...recordEvents];
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-lg p-4 w-full overflow-hidden">

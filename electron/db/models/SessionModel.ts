@@ -1,27 +1,23 @@
 import { db } from "../";
-import {
-  SessionCreateInput,
-  SessionUpdateInput,
-  SessionResult,
-} from "../types";
+import { SessionCreateInput, SessionResult } from "../types";
 
-// Helper: map DB row → SessionResult
-function mapSession(row: any): SessionResult {
-  return {
-    id: row.id,
-    courseId: row.courseId,
-    date: row.date,
-    used: row.used,
-    usedAt: row.usedAt,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  };
+function normalizeDate(input: string | Date): string {
+  const d = new Date(input);
+  if (isNaN(d.getTime())) {
+    throw new Error("Invalid date input: " + input);
+  }
+
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  const ss = String(d.getSeconds()).padStart(2, "0");
+
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
 }
 
 export const SessionModel = {
-  // -------------------------
-  // CREATE
-  // -------------------------
   create(data: SessionCreateInput): SessionResult {
     const stmt = db.prepare(`
       INSERT INTO Sessions (courseId, date, used, usedAt, createdAt, updatedAt)
@@ -38,135 +34,90 @@ export const SessionModel = {
     return this.findById(result.lastInsertRowid as number)!;
   },
 
-  // -------------------------
-  // FIND BY ID
-  // -------------------------
-  findById(id: number): SessionResult | null {
-    const row = db.prepare(`SELECT * FROM Sessions WHERE id = ?`).get(id);
-    return row ? mapSession(row) : null;
-  },
-
-  // -------------------------
-  // FIND BY COURSE
-  // -------------------------
-  findByCourse(courseId: number): SessionResult[] {
-    const rows = db
-      .prepare(`SELECT * FROM Sessions WHERE courseId = ? ORDER BY date ASC`)
-      .all(courseId);
-
-    return rows.map(mapSession);
-  },
-
-  // -------------------------
-  // FIND BY USER  (JOIN)
-  // Sessions JOIN Courses
-  // -------------------------
-  findByUser(userId: number): SessionResult[] {
-    const rows = db
+  findById(id: number): SessionResult {
+    const row: any = db
       .prepare(
         `
-        SELECT s.*
-        FROM Sessions s
-        JOIN Courses c ON s.courseId = c.id
-        WHERE c.userId = ?
-        ORDER BY s.date ASC
+      SELECT 
+        s.id,
+        s.courseId,
+        s.date,
+        s.used,
+        s.usedAt,
+        s.createdAt,
+        s.updatedAt,
+        c.userId,
+        u.firstName,
+        u.lastName
+      FROM Sessions s
+      JOIN Courses c ON s.courseId = c.id
+      JOIN Users u ON c.userId = u.id
+      WHERE s.id = ?
+      LIMIT 1
       `
       )
-      .all(userId);
+      .get(id);
 
-    return rows.map(mapSession);
-  },
+    if (!row) {
+      throw new Error("Session not found");
+    }
 
-  // -------------------------
-  // FIND UNUSED
-  // -------------------------
-  findUnused(): SessionResult[] {
-    const rows = db
-      .prepare(`SELECT * FROM Sessions WHERE used = 0 ORDER BY date ASC`)
-      .all();
+    return {
+      id: row.id,
+      courseId: row.courseId,
+      date: row.date,
+      used: row.used,
+      usedAt: row.usedAt,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
 
-    return rows.map(mapSession);
-  },
-
-  // -------------------------
-  // FIND UNUSED BY USER
-  // -------------------------
-  findUnusedByUser(userId: number): SessionResult[] {
-    const rows = db
-      .prepare(
-        `
-        SELECT s.*
-        FROM Sessions s
-        JOIN Courses c ON s.courseId = c.id
-        WHERE s.used = 0 AND c.userId = ?
-        ORDER BY s.date ASC
-      `
-      )
-      .all(userId);
-
-    return rows.map(mapSession);
-  },
-
-  // -------------------------
-  // MARK AS USED
-  // -------------------------
-  markUsed(id: number): SessionResult | null {
-    const session = this.findById(id);
-    if (!session) return null;
-
-    db.prepare(
-      `
-      UPDATE Sessions
-      SET used = 1,
-          usedAt = CURRENT_TIMESTAMP,
-          updatedAt = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `
-    ).run(id);
-
-    return this.findById(id);
-  },
-
-  // -------------------------
-  // UPDATE PARTIAL
-  // -------------------------
-  update(id: number, data: SessionUpdateInput): SessionResult | null {
-    const exists = this.findById(id);
-    if (!exists) return null;
-
-    const existing = this.findById(id)!;
-
-    const merged = {
-      courseId: data.courseId ?? existing.courseId,
-      date: data.date ?? existing.date,
-      used: data.used ?? existing.used,
-      usedAt: data.usedAt ?? existing.usedAt,
+      userId: row.userId,
+      title: `${row.firstName} ${row.lastName}`,
+      start: new Date(row.date),
     };
-
-    db.prepare(
-      `
-      UPDATE Sessions
-      SET courseId = ?, date = ?, used = ?, usedAt = ?, updatedAt = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `
-    ).run(merged.courseId, merged.date, merged.used, merged.usedAt, id);
-
-    return this.findById(id);
   },
-
-  // -------------------------
-  // DELETE
-  // -------------------------
   delete(id: number) {
     db.prepare(`DELETE FROM Sessions WHERE id = ?`).run(id);
   },
+  findAll(start: string | Date, end: string | Date): SessionResult[] {
+    const startNormalized = normalizeDate(start);
+    const endNormalized = normalizeDate(end);
 
-  // -------------------------
-  // ALL
-  // -------------------------
-  all(): SessionResult[] {
-    const rows = db.prepare(`SELECT * FROM Sessions ORDER BY date ASC`).all();
+    const rows = db
+      .prepare(
+        `
+      SELECT 
+        s.id,
+        s.courseId,
+        s.date,
+        s.used,
+        s.usedAt,
+        s.createdAt,
+        s.updatedAt,
+        c.userId,
+        u.firstName,
+        u.lastName
+      FROM Sessions s
+      JOIN Courses c ON s.courseId = c.id
+      JOIN Users u ON c.userId = u.id
+      WHERE s.date BETWEEN ? AND ?
+      ORDER BY s.date ASC
+      `
+      )
+      .all(startNormalized, endNormalized);
 
-    return rows.map(mapSession);
+    return rows.map((row: any) => ({
+      id: row.id,
+      courseId: row.courseId,
+      date: row.date,
+      used: row.used,
+      usedAt: row.usedAt,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+
+      userId: row.userId,
+      title: `${row.firstName} ${row.lastName}`,
+      start: new Date(row.date),
+    }));
   },
 };

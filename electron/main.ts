@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import { registerUserHandlers } from "./ipc/users";
 import { initDatabase } from "./db";
 import { registerRfidHandlers } from "./ipc/rfid";
+import { registerCalendarHandlers } from "./ipc/calendar";
 
 dotenv.config();
 
@@ -56,6 +57,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   registerUserHandlers();
+  registerCalendarHandlers();
   createWindow();
   initDatabase();
 });

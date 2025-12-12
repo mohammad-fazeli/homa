@@ -88,7 +88,6 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
 
   getUser: async (userId) => {
     const result = await window.electronAPI?.getUser(userId);
-    console.log("🚀 ~ result:", result);
     if (!result) return;
     set({
       user: result,

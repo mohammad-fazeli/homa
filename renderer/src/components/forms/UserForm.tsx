@@ -25,7 +25,7 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
     {
       id: number;
       date: string | Date;
-      used: boolean;
+      used: 0 | 1;
       usedAt: string | Date | null;
       userId: number;
     }[]
@@ -104,10 +104,10 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
     }
 
     // اضافه کردن جلسه جدید
-    const newRecord = {
-      id: Date.now(),
+    const newRecord: any = {
+      id: -1,
       date: iso,
-      used: false,
+      used: 0,
       usedAt: null,
       userId: user?.id || -1, // ← برای تشخیص رنگ
     };

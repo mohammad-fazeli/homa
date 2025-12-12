@@ -55,7 +55,11 @@ export interface SessionCreateInput
 export interface SessionUpdateInput
   extends Partial<Omit<SessionAttributes, "id">> {}
 
-export type SessionResult = SessionAttributes;
+export type SessionResult = SessionAttributes & {
+  userId: number;
+  title: string;
+  start: Date;
+};
 
 export interface SessionCreateInput extends Omit<SessionAttributes, "id"> {}
 
