@@ -1,5 +1,9 @@
 import { contextBridge, ipcRenderer } from "electron";
-import { UserCreateInput, UserUpdateInput } from "./db/types";
+import {
+  SessionUpdateInput,
+  UserCreateInput,
+  UserUpdateInput,
+} from "./db/types";
 
 contextBridge.exposeInMainWorld("electronAPI", {
   send: (channel: string, data: any) => ipcRenderer.send(channel, data),
@@ -18,8 +22,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     course?: { cost: number; sessions: number },
     sessions?: string[]
   ) => ipcRenderer.invoke("add-user", user, course, sessions),
-  updateUser: (user: UserUpdateInput) =>
-    ipcRenderer.invoke("update-user", user),
+  updateUser: (
+    user: UserUpdateInput,
+    course?: { cost: number; sessions: number; id: number },
+    sessions?: SessionUpdateInput[]
+  ) => ipcRenderer.invoke("update-user", user, course, sessions),
   //calender
   getCalender: (start: string | Date, end: string | Date) =>
     ipcRenderer.invoke("get-calender", start, end),

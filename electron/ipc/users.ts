@@ -1,5 +1,6 @@
 import { ipcMain } from "electron";
 import {
+  SessionUpdateInput,
   UserCreateInput,
   UserFindAllResult,
   UserFindByIdResult,
@@ -21,7 +22,7 @@ export function registerUserHandlers() {
       const newUser = await UserModel.create(user);
       if (!newUser) throw new Error("کاربر یافت نشد");
 
-      if (course) {
+      if (course && course.cost && course.cost) {
         const newCourse = await CourseModel.create({
           ...course,
           userId: newUser.id,
@@ -63,13 +64,22 @@ export function registerUserHandlers() {
     "update-user",
     async (
       event,
-      updatedUser: UserUpdateInput
+      updatedUser: UserUpdateInput,
+      course?: { cost: number; sessions: number; id: number },
+      sessions?: SessionUpdateInput[]
     ): Promise<UserFindByIdResult> => {
       const existing = await UserModel.findById(updatedUser.id);
       if (!existing) throw new Error("کاربر یافت نشد");
 
       const user = await UserModel.update(updatedUser);
       if (!user) throw new Error("کاربر یافت نشد");
+
+      if (course) {
+        CourseModel.update(course);
+        if (sessions) {
+          SessionModel.update(course?.id, sessions);
+        }
+      }
 
       return user;
     }

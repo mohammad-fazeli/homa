@@ -1,5 +1,5 @@
 import { db } from "../";
-import { CourseCreateInput, CourseResult } from "../types";
+import { CourseCreateInput, CourseResult, CourseUpdateInput } from "../types";
 
 function mapCourse(row: any): CourseResult {
   return {
@@ -35,6 +35,21 @@ export const CourseModel = {
       .all(userId);
 
     return rows.map(mapCourse);
+  },
+
+  update(data: { cost: number; sessions: number; id: number }) {
+    const course = this.findById(data.id);
+    if (!course) return null;
+
+    db.prepare(
+      `
+    UPDATE Courses
+    SET cost = ?, sessions = ?
+    WHERE id = ?
+  `
+    ).run(data.cost, data.sessions, data.id);
+
+    return this.findById(data.id);
   },
 
   delete(id: number) {

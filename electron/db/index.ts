@@ -27,6 +27,6 @@ export function initDatabase() {
   createTables();
 
   if (process.env.NODE_ENV === "development") {
-    seedDatabase();
+    // seedDatabase();
   }
 }

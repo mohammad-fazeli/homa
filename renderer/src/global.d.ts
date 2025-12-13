@@ -65,6 +65,8 @@ export interface SessionAttributes {
   updatedAt?: Date;
 }
 
+export interface SessionUpdateInput extends SessionAttributes {}
+
 export type SessionResult = SessionAttributes & {
   userId: number;
   title: string;
@@ -84,7 +86,11 @@ export type RendererElectronAPI = {
   ) => Promise<UserFindByIdResult>;
   getUser: (userid: number) => Promise<UserFindByIdResult>;
   getUsers: (page: number, limit: number) => Promise<UserFindAllResult>;
-  updateUser: (user: UserUpdateInput) => Promise<UserFindByIdResult>;
+  updateUser: (
+    user: UserUpdateInput,
+    course?: { cost: number; sessions: number; id: number },
+    sessions?: SessionUpdateInput[]
+  ) => Promise<UserFindByIdResult>;
   deleteUser: (id: number) => Promise<number>;
   //calender
   getCalender: (start: string, end: string) => Promise<SessionResult[]>;

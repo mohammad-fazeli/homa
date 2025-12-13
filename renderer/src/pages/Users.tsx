@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Plus, Search } from "lucide-react";
 import { useUsersStore } from "../store/users";
 import UsersList from "../components/UsersList";
+import { Link } from "react-router-dom";
 
 export default function Users() {
   const { users, query, isLoading, setQuery, loadUsers, page } =
@@ -40,11 +41,12 @@ export default function Users() {
             </button>
           </div>
 
-          <div className="flex gap-3">
-            <button className="inline-flex items-center gap-2 bg-linear-to-r from-sky-500 to-indigo-600 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg cursor-pointer">
-              <Plus size={16} /> ساخت کاربر جدید
-            </button>
-          </div>
+          <Link
+            to="/user/new"
+            className="inline-flex items-center gap-2 bg-linear-to-r from-sky-500 to-indigo-600 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg cursor-pointer"
+          >
+            <Plus size={16} /> ساخت کاربر جدید
+          </Link>
         </div>
       </header>
 

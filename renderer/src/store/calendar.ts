@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { SessionResult } from "../global";
+import { useUsersStore } from "./users";
 
 interface CalendarStore {
   allEvents: SessionResult[];
@@ -18,13 +19,18 @@ export const useCalendarStore = create<CalendarStore>((set, get) => ({
     set({ isLoading: true });
     try {
       const data = await window.electronAPI?.getCalender(start, end);
-      console.log("🚀 ~ data:", data);
+
+      const user = useUsersStore.getState().user;
+      const userSessions = user?.course?.sessions?.map((s) => s.date) ?? [];
+
+      const filteredEvents =
+        data?.filter((event) => !userSessions.includes(event.date)) ?? [];
+      console.log("🚀 ~ filteredEvents:", filteredEvents);
       set({
         isLoading: false,
-        allEvents: data,
+        allEvents: filteredEvents,
       });
     } catch (e) {
-      console.log("🚀 ~ e:", e);
       set({ isLoading: false });
     }
   },

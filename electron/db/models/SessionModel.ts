@@ -1,5 +1,9 @@
 import { db } from "../";
-import { SessionCreateInput, SessionResult } from "../types";
+import {
+  SessionCreateInput,
+  SessionResult,
+  SessionUpdateInput,
+} from "../types";
 
 function normalizeDate(input: string | Date): string {
   const d = new Date(input);
@@ -76,9 +80,27 @@ export const SessionModel = {
       start: new Date(row.date),
     };
   },
+
+  update(courseId: number, data: SessionUpdateInput[]) {
+    this.deletesByCourseId(courseId);
+    for (const session of data) {
+      this.create({
+        courseId: courseId,
+        date: session.date,
+        used: session.used,
+        usedAt: session.usedAt,
+      });
+    }
+  },
+
+  deletesByCourseId(courseId: number) {
+    db.prepare(`DELETE FROM Sessions WHERE courseId = ?`).run(courseId);
+  },
+
   delete(id: number) {
     db.prepare(`DELETE FROM Sessions WHERE id = ?`).run(id);
   },
+
   findAll(start: string | Date, end: string | Date): SessionResult[] {
     const startNormalized = normalizeDate(start);
     const endNormalized = normalizeDate(end);

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import {
+  SessionUpdateInput,
   UserCreateInput,
   UserFindAllItem,
   UserFindByIdResult,
@@ -23,6 +24,7 @@ interface UsersStore {
   setTotalPages: (p: number) => void;
   setQuery: (q: string) => void;
   setUser: (v: UserFindByIdResult | null) => void;
+  clearUser: () => void;
 
   setEditingUser: (u: boolean) => void;
   setDeleteUserId: (id: number | null) => void;
@@ -34,7 +36,11 @@ interface UsersStore {
     course?: { cost: number; sessions: number },
     sessions?: string[]
   ) => Promise<void>;
-  updateUser: (payload: UserUpdateInput) => Promise<void>;
+  updateUser: (
+    user: UserUpdateInput,
+    course?: { cost: number; sessions: number; id: number },
+    sessions?: SessionUpdateInput[]
+  ) => Promise<void>;
   deleteUser: (id: number) => Promise<void>;
   changeSessions: (id: number, delta: number) => Promise<void>;
 }
@@ -57,6 +63,7 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
   setTotalPages: (p) => set({ totalPages: p }),
   setQuery: (q) => set({ query: q }),
   setUser: (u) => set({ user: u }),
+  clearUser: () => set({ user: null }),
   setEditingUser: (u) => set({ editingUser: u }),
   setDeleteUserId: (id) => set({ deleteUserId: id }),
 
@@ -94,8 +101,12 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
     });
   },
 
-  updateUser: async (payload) => {
-    await window.electronAPI?.updateUser?.(payload);
+  updateUser: async (
+    user: UserUpdateInput,
+    course?: { cost: number; sessions: number; id: number },
+    sessions?: SessionUpdateInput[]
+  ) => {
+    await window.electronAPI?.updateUser?.(user, course, sessions);
     await get().loadUsers();
     set({
       editingUser: false,

@@ -35,6 +35,8 @@ export interface CourseCreateInput
 
 export type CourseResult = CourseAttributes;
 
+export interface CourseUpdateInput extends CourseAttributes {}
+
 // =====================
 //   SESSION TYPES
 // =====================
@@ -52,8 +54,7 @@ export interface SessionAttributes {
 export interface SessionCreateInput
   extends Omit<SessionAttributes, "id" | "createdAt" | "updatedAt"> {}
 
-export interface SessionUpdateInput
-  extends Partial<Omit<SessionAttributes, "id">> {}
+export interface SessionUpdateInput extends SessionAttributes {}
 
 export type SessionResult = SessionAttributes & {
   userId: number;
