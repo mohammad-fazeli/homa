@@ -11,7 +11,7 @@ const dbPath = path.join(app.getPath("userData"), "database.sqlite");
 
 // در حالت dev دیتابیس حذف می‌شود
 if (process.env.NODE_ENV === "development") {
-  if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
+  // if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
 }
 
 // اتصال به دیتابیس

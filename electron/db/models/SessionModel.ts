@@ -5,22 +5,6 @@ import {
   SessionUpdateInput,
 } from "../types";
 
-function normalizeDate(input: string | Date): string {
-  const d = new Date(input);
-  if (isNaN(d.getTime())) {
-    throw new Error("Invalid date input: " + input);
-  }
-
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mi = String(d.getMinutes()).padStart(2, "0");
-  const ss = String(d.getSeconds()).padStart(2, "0");
-
-  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
-}
-
 export const SessionModel = {
   create(data: SessionCreateInput): SessionResult {
     const stmt = db.prepare(`
@@ -102,8 +86,8 @@ export const SessionModel = {
   },
 
   findAll(start: string | Date, end: string | Date): SessionResult[] {
-    const startNormalized = normalizeDate(start);
-    const endNormalized = normalizeDate(end);
+    const startNormalized = start;
+    const endNormalized = end;
 
     const rows = db
       .prepare(
@@ -128,18 +112,20 @@ export const SessionModel = {
       )
       .all(startNormalized, endNormalized);
 
-    return rows.map((row: any) => ({
-      id: row.id,
-      courseId: row.courseId,
-      date: row.date,
-      used: row.used,
-      usedAt: row.usedAt,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
+    return rows.map((row: any) => {
+      return {
+        id: row.id,
+        courseId: row.courseId,
+        date: row.date,
+        used: row.used,
+        usedAt: row.usedAt,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
 
-      userId: row.userId,
-      title: `${row.firstName} ${row.lastName}`,
-      start: new Date(row.date),
-    }));
+        userId: row.userId,
+        title: `${row.firstName} ${row.lastName}`,
+        start: new Date(row.date),
+      };
+    });
   },
 };

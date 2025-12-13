@@ -25,7 +25,6 @@ export const useCalendarStore = create<CalendarStore>((set, get) => ({
 
       const filteredEvents =
         data?.filter((event) => !userSessions.includes(event.date)) ?? [];
-      console.log("🚀 ~ filteredEvents:", filteredEvents);
       set({
         isLoading: false,
         allEvents: filteredEvents,

@@ -82,7 +82,7 @@ export default function WeeklyCalendar({
     const day = d.getDay();
     const diff = (day + 1) % 7; // Saturday = 0
     d.setDate(d.getDate() - diff + 7);
-    loadEvents(currentWeek.toString(), d.toString());
+    loadEvents(currentWeek.toLocaleString(), d.toLocaleString());
   }, [currentWeek]);
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(currentWeek, i));
