@@ -1,26 +1,60 @@
-import { BrowserWindow, ipcMain } from "electron";
+// src/electron/handlers/rfidHandlers.ts
+import { BrowserWindow } from "electron";
 import SerialRFID from "../rfid/serial-rfid";
 
 export async function registerRfidHandlers(win: BrowserWindow) {
   const rfid = new SerialRFID();
+
+  const sendStatus = (status: "online" | "offline") => {
+    win.webContents.send("rfid:status", status);
+  };
+
   const ports = await SerialRFID.listPorts();
-  if (ports.length === 0) return console.error("No RFID port found");
+
+  if (ports.length === 0) {
+    sendStatus("offline");
+    console.error("❌ No RFID device found");
+    return;
+  }
+
   const port = ports[0].path;
 
-  await rfid.open(port, { baudRate: 9600 });
+  try {
+    await rfid.open(port, { baudRate: 9600, reconnectDelay: 1500 });
+    sendStatus("online");
+  } catch (e) {
+    sendStatus("offline");
+    return;
+  }
 
-  // وقتی یک خط کامل از RFID آمد
+  // ==========================
+  // RFID EVENTS
+  // ==========================
   rfid.onLine((line) => {
     console.log("RFID LINE:", line);
 
-    // اگر خط UID بود
     if (/^[0-9A-F]{10}$/i.test(line)) {
       win.webContents.send("rfid-card-present", line);
     }
 
-    // کارت برداشته شد
     if (line === "Msg0000005") {
       win.webContents.send("rfid-card-removed");
     }
   });
+
+  rfid.onReconnect((status) => {
+    sendStatus(status);
+  });
+
+  rfid.onError(() => {
+    sendStatus("offline");
+  });
+
+  rfid.onClose(() => {
+    sendStatus("offline");
+  });
+
+  setTimeout(() => {
+    sendStatus("online");
+  }, 2000);
 }

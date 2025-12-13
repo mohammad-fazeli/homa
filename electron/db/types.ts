@@ -119,3 +119,55 @@ export interface UserFindByIdResult {
     sessions: UserCourseSessionItem[];
   } | null;
 }
+
+// -----------------------
+
+export interface BillingSummary {
+  totalUsers: number;
+  totalCourses: number;
+  totalRevenue: number;
+  avgCoursePrice: number;
+}
+
+export interface RevenueByMonthItem {
+  month: string;
+  revenue: number;
+}
+
+export interface SessionStats {
+  used: number;
+  remaining: number;
+}
+
+export interface BillingLogItem {
+  id: number;
+  userFullName: string;
+  change: number;
+  description: string | null;
+  date: string;
+}
+
+// ==========================
+// Dashboard Types
+// ==========================
+
+export interface DashboardStats {
+  activeUsers: number;
+  weeklySessions: number;
+  monthlyRevenue: number;
+}
+
+export interface WeeklySessionItem {
+  day: number; // 0-6 (Sunday-Saturday / map in frontend)
+  value: number;
+}
+
+export interface MonthlyIncomeItem {
+  month: string; // YYYY-MM
+  value: number;
+}
+
+export interface AppConnectionStatus {
+  status: "online";
+  timestamp: number;
+}

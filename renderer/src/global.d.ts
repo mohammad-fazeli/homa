@@ -73,6 +73,41 @@ export type SessionResult = SessionAttributes & {
   start: Date;
 };
 
+export interface BillingSummary {
+  totalUsers: number;
+  totalCourses: number;
+  totalRevenue: number;
+  avgCoursePrice: number;
+}
+
+export interface RevenueByMonthItem {
+  month: string;
+  revenue: number;
+}
+
+export interface SessionStats {
+  used: number;
+  remaining: number;
+}
+
+export interface BillingLogItem {
+  id: number;
+  userFullName: string;
+  change: number;
+  description: string | null;
+  date: string;
+}
+
+// ==========================
+// Dashboard Types
+// ==========================
+
+export interface DashboardStats {
+  activeUsers: number;
+  weeklySessions: number;
+  monthlyRevenue: number;
+}
+
 export type RendererElectronAPI = {
   minimize: () => void;
   maximize: () => void;
@@ -94,6 +129,21 @@ export type RendererElectronAPI = {
   deleteUser: (id: number) => Promise<number>;
   //calender
   getCalender: (start: string, end: string) => Promise<SessionResult[]>;
+  //billing
+  billingGetSummary: () => Promise<BillingSummary>;
+  billingGetRevenueByMonth: () => Promise<RevenueByMonthItem[]>;
+  billingGetSessionStats: () => Promise<SessionStats>;
+  billingGetRecentLogs: () => Promise<BillingLogItem[]>;
+  //DASHBOARD
+  dashboardGetStats: () => Promise<DashboardStats>;
+  //RFID
+  ipcRenderer: {
+    on: (
+      channel: string,
+      listener: (...args: any[]) => void
+    ) => Electron.IpcRenderer;
+    removeListener: (channel: string, listener: any) => Electron.IpcRenderer;
+  };
 };
 
 declare global {

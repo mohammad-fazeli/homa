@@ -5,6 +5,8 @@ import { registerUserHandlers } from "./ipc/users";
 import { initDatabase } from "./db";
 import { registerRfidHandlers } from "./ipc/rfid";
 import { registerCalendarHandlers } from "./ipc/calendar";
+import { registerBillingHandlers } from "./ipc/billing";
+import { registerDashboardHandlers } from "./ipc/dashboard";
 
 dotenv.config();
 
@@ -58,6 +60,8 @@ function createWindow() {
 app.whenReady().then(() => {
   registerUserHandlers();
   registerCalendarHandlers();
+  registerBillingHandlers();
+  registerDashboardHandlers();
   createWindow();
   initDatabase();
 });

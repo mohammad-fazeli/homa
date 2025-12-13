@@ -30,4 +30,19 @@ contextBridge.exposeInMainWorld("electronAPI", {
   //calender
   getCalender: (start: string | Date, end: string | Date) =>
     ipcRenderer.invoke("get-calender", start, end),
+  //billing
+  billingGetSummary: () => ipcRenderer.invoke("billing:getSummary"),
+  billingGetRevenueByMonth: () =>
+    ipcRenderer.invoke("billing:getRevenueByMonth"),
+  billingGetSessionStats: () => ipcRenderer.invoke("billing:getSessionStats"),
+  billingGetRecentLogs: () => ipcRenderer.invoke("billing:getRecentLogs"),
+  //DASHBOARD
+  dashboardGetStats: () => ipcRenderer.invoke("dashboard:getStats"),
+  //rfid
+  ipcRenderer: {
+    on: (channel: string, listener: (...args: any[]) => void) =>
+      ipcRenderer.on(channel, (_, ...args) => listener(...args)),
+    removeListener: (channel: string, listener: any) =>
+      ipcRenderer.removeListener(channel, listener),
+  },
 });

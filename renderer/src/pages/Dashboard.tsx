@@ -1,63 +1,26 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { Card, CardContent } from "../components/card";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-} from "recharts";
-import { Users, Calendar, CreditCard, ArrowUpRight } from "lucide-react";
+
+import { Users, Calendar, CreditCard, Wifi, WifiOff, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 
+import { useDashboardStore } from "../store/dashboard";
+import { useRfidStatus } from "../components/useRfidStatus";
+import { Link } from "react-router-dom";
+
+// =======================
+// Component
+// =======================
 export default function Dashboard() {
-  const stats = [
-    {
-      title: "تعداد مشتریان فعال",
-      value: 128,
-      icon: <Users className="text-indigo-500" />,
-      trend: "+12%",
-    },
-    {
-      title: "جلسات این هفته",
-      value: 42,
-      icon: <Calendar className="text-sky-500" />,
-      trend: "+8%",
-    },
-    {
-      title: "درآمد این ماه",
-      value: "14,300,000",
-      icon: <CreditCard className="text-emerald-500" />,
-      trend: "+5%",
-    },
-  ];
-
-  const weeklySessions = [
-    { day: "ش", value: 8 },
-    { day: "ی", value: 6 },
-    { day: "د", value: 10 },
-    { day: "س", value: 7 },
-    { day: "چ", value: 12 },
-    { day: "پ", value: 5 },
-    { day: "ج", value: 3 },
-  ];
-
-  const monthlyIncome = [
-    { month: "فروردین", value: 12 },
-    { month: "اردیبهشت", value: 18 },
-    { month: "خرداد", value: 22 },
-    { month: "تیر", value: 25 },
-    { month: "مرداد", value: 19 },
-    { month: "شهریور", value: 27 },
-  ];
+  const { loadData, statsResult } = useDashboardStore();
+  const ping = useRfidStatus();
+  useEffect(() => {
+    loadData();
+  }, []);
 
   return (
     <div className="p-8 space-y-10">
-      {/* Header */}
+      {/* ================= Header ================= */}
       <motion.h1
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -66,89 +29,92 @@ export default function Dashboard() {
         داشبورد مدیریتی
       </motion.h1>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {stats.map((item, idx) => (
-          <motion.div
-            key={idx}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.1 }}
-          >
-            <Card className="rounded-2xl shadow-lg border border-slate-100">
-              <CardContent className="p-6 flex items-center justify-between">
-                <div>
-                  <p className="text-slate-500 text-sm">{item.title}</p>
-                  <p className="text-2xl font-bold mt-2">{item.value}</p>
-                  <div className="flex items-center gap-1 text-emerald-500 text-xs mt-1">
-                    <ArrowUpRight size={14} />
-                    {item.trend}
-                  </div>
-                </div>
-                <div className="text-4xl opacity-70">{item.icon}</div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
+      {/* ================= Stats ================= */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <StatCard
+          title="مشتریان فعال"
+          value={statsResult.activeUsers}
+          icon={<Users className="text-indigo-500" />}
+        />
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Weekly Sessions Chart */}
-        <Card className="rounded-2xl shadow-lg border border-slate-100">
-          <CardContent className="p-6">
-            <h2 className="font-semibold mb-4">آمار جلسات هفتگی</h2>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weeklySessions}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="value" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="جلسات این هفته"
+          value={statsResult.weeklySessions}
+          icon={<Calendar className="text-sky-500" />}
+        />
 
-        {/* Monthly Income Chart */}
+        <StatCard
+          title="درآمد این ماه"
+          value={`${statsResult.monthlyRevenue.toLocaleString()} تومان`}
+          icon={<CreditCard className="text-emerald-500" />}
+        />
+
+        {/* Connection Status */}
         <Card className="rounded-2xl shadow-lg border border-slate-100">
-          <CardContent className="p-6">
-            <h2 className="font-semibold mb-4">درآمد ماهانه</h2>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={monthlyIncome}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line dataKey="value" strokeWidth={3} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
+          <CardContent className="p-6 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-500">وضعیت اتصال</p>
+              <p
+                className={`font-bold mt-1 ${
+                  ping === "online" ? "text-emerald-600" : "text-red-500"
+                }`}
+              >
+                {ping === "online" ? "متصل" : "قطع ارتباط"}
+              </p>
             </div>
+            {ping === "online" ? (
+              <Wifi className="text-emerald-500" />
+            ) : (
+              <WifiOff className="text-red-500" />
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-        {[
-          { title: "افزودن مشتری جدید", color: "from-indigo-500 to-blue-500" },
-          { title: "تنظیم جلسه جدید", color: "from-emerald-500 to-teal-500" },
-          { title: "ثبت پرداخت", color: "from-amber-500 to-orange-500" },
-        ].map((item, idx) => (
-          <motion.button
-            key={idx}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 * idx }}
-            className={`p-4 text-white rounded-2xl shadow-lg bg-linier-to-r ${item.color} hover:opacity-90 transition text-center font-medium`}
-          >
-            {item.title}
-          </motion.button>
-        ))}
+      {/* ================= Charts ================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <Link
+          to="/users"
+          className="inline-flex items-center gap-2 bg-linear-to-r from-sky-500 to-indigo-600 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg cursor-pointer"
+        >
+          <Plus size={16} /> مشاهده کاربران
+        </Link>
+        <Link
+          to="/user/new"
+          className="inline-flex items-center gap-2 bg-linear-to-r from-sky-500 to-indigo-600 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg cursor-pointer"
+        >
+          <Plus size={16} /> ساخت کاربر جدید
+        </Link>
+        <Link
+          to="/sessions"
+          className="inline-flex items-center gap-2 bg-linear-to-r from-sky-500 to-indigo-600 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg cursor-pointer"
+        >
+          <Plus size={16} /> برنامه هفتگی
+        </Link>
       </div>
     </div>
   );
 }
+
+// =======================
+// Components
+// =======================
+type StatCardProps = {
+  title: string;
+  value: number | string;
+  icon: React.ReactNode;
+};
+
+const StatCard = ({ title, value, icon }: StatCardProps) => (
+  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+    <Card className="rounded-2xl shadow-lg border border-slate-100">
+      <CardContent className="p-6 flex items-center justify-between">
+        <div>
+          <p className="text-slate-500 text-sm">{title}</p>
+          <p className="text-2xl font-bold mt-2">{value}</p>
+        </div>
+        <div className="text-4xl opacity-70">{icon}</div>
+      </CardContent>
+    </Card>
+  </motion.div>
+);

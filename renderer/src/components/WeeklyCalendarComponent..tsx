@@ -67,6 +67,17 @@ function formatDateFa(d: Date) {
   }
 }
 
+function isNowCell(cellDate: Date) {
+  const now = new Date();
+
+  return (
+    cellDate.getFullYear() === now.getFullYear() &&
+    cellDate.getMonth() === now.getMonth() &&
+    cellDate.getDate() === now.getDate() &&
+    cellDate.getHours() === now.getHours()
+  );
+}
+
 export default function WeeklyCalendar({
   records = [],
   onAddEvent,
@@ -196,11 +207,18 @@ export default function WeeklyCalendar({
                 );
               });
 
+              const isNow = isNowCell(cellDate);
+
               return (
                 <div
                   key={i}
                   onClick={() => handleCellClick(day, hour)}
-                  className="relative border-b border-r border-slate-200 h-12 cursor-pointer hover:bg-slate-50 transition"
+                  className={`relative border-b border-r border-slate-200 h-12 cursor-pointer transition hover:bg-slate-50
+                    ${
+                      isNow
+                        ? "bg-indigo-50 ring-2 ring-indigo-500 ring-inset"
+                        : ""
+                    }`}
                 >
                   {cellEvents.map((ev, i) => (
                     <motion.div
@@ -213,10 +231,10 @@ export default function WeeklyCalendar({
                       )}`}
                     >
                       {ev.used
-                        ? "استفاده شده"
+                        ? "استفاده شده" + ev.title
                         : ev.userId === currentUserId
-                        ? "رزرو شما"
-                        : "رزرو دیگران"}
+                        ? "رزرو کاربر فعلی"
+                        : ev.title}
                     </motion.div>
                   ))}
                 </div>

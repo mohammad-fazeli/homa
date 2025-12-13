@@ -134,8 +134,6 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
       const exist = records.find(
         (r) => new Date(r.date).toLocaleString() === iso
       );
-      console.log("🚀 ~ iso:", iso);
-      console.log("🚀 ~ records:", records);
 
       if (exist) {
         setRecords((prev) => prev.filter((r) => r.id !== exist.id));

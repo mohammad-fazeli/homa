@@ -10,6 +10,7 @@ export interface SerialRFIDOpenOptions {
 export type LineCallback = (line: string) => void;
 export type ErrorCallback = (error: Error) => void;
 export type CloseCallback = () => void;
+export type OnReconnect = (status: "online" | "offline") => void;
 
 export class SerialRFID {
   private port: SerialPort | null = null;
@@ -18,6 +19,7 @@ export class SerialRFID {
   private _onLine?: LineCallback;
   private _onError?: ErrorCallback;
   private _onClose?: CloseCallback;
+  private _onReconnect?: OnReconnect;
 
   private path: string | null = null;
   private options: SerialRFIDOpenOptions = {};
@@ -66,6 +68,7 @@ export class SerialRFID {
       this.port!.on("data", (data: Buffer) => this._handleData(data));
       this.port!.on("error", (err) => this._handleError(err));
       this.port!.on("close", () => this._handleClose());
+      if (this._onReconnect) this._onReconnect("online");
       console.log("✅ RFID connected to", this.path);
     });
   }
@@ -141,6 +144,7 @@ export class SerialRFID {
         await this._openPort();
       } catch (e) {
         console.error("❌ Reconnect failed:", e);
+        if (this._onReconnect) this._onReconnect("offline");
         this._scheduleReconnect();
       }
     }, delay);
@@ -156,6 +160,10 @@ export class SerialRFID {
 
   public onClose(cb: CloseCallback) {
     this._onClose = cb;
+  }
+
+  public onReconnect(cb: OnReconnect) {
+    this._onReconnect = cb;
   }
 
   public writeLine(line: string): Promise<void> {

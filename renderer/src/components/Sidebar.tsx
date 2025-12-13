@@ -17,34 +17,13 @@ const menuItems = [
     name: "جلسات",
     path: "/sessions",
     icon: "📅",
-    children: [
-      { name: "تقویم جلسات", path: "/sessions/calendar" },
-      { name: "تنظیم جلسه جدید", path: "/sessions/new" },
-    ],
   },
 
   {
     name: "مالی",
     path: "/billing",
     icon: "💰",
-    children: [
-      { name: "ثبت پرداخت", path: "/billing/new" },
-      { name: "تمدید جلسات", path: "/billing/renew" },
-      { name: "لیست بدهکاران", path: "/billing/debtors" },
-    ],
   },
-
-  {
-    name: "گزارش‌ها",
-    path: "/reports",
-    icon: "📊",
-    children: [
-      { name: "گزارش جلسات", path: "/reports/sessions" },
-      { name: "گزارش مالی", path: "/reports/finance" },
-    ],
-  },
-
-  { name: "تنظیمات", path: "/settings", icon: "⚙️" },
 ];
 
 export default function Sidebar() {
