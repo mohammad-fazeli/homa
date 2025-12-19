@@ -19,6 +19,7 @@ interface FormState {
   nationalId: string;
   sessions: number;
   cost: string;
+  uidCart: string;
 }
 
 export default function UserForm({ onCancel }: { onCancel: () => void }) {
@@ -31,6 +32,7 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
     nationalId: "",
     sessions: 0,
     cost: "",
+    uidCart: "",
   });
 
   const [records, setRecords] = useState<RecordItem[]>([]);
@@ -49,6 +51,7 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
         nationalId: user.nationalId,
         sessions: user.course?.totalSessions ?? 0,
         cost: user.course?.cost?.toLocaleString() ?? "",
+        uidCart: user?.uidCart || "",
       });
 
       setRecords(
@@ -62,6 +65,7 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
         nationalId: "",
         sessions: 0,
         cost: "",
+        uidCart: "",
       });
       setRecords([]);
       clearUser();
@@ -75,6 +79,21 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
       setRecords((prev) => prev.slice(0, prev.length - diff));
     }
   }, [form.sessions]);
+
+  useEffect(() => {
+    window.electronAPI?.ipcRenderer.on("rfid-card-present", (e) => {
+      setForm((prev) => ({ ...prev, uidCart: e }));
+    });
+
+    return () => {
+      window.electronAPI?.ipcRenderer.removeListener(
+        "rfid-card-present",
+        (e: any) => {
+          setForm((prev) => ({ ...prev, uidCart: e }));
+        }
+      );
+    };
+  }, []);
 
   /** ثبت فرم */
   const submit = (e?: React.FormEvent) => {
@@ -97,6 +116,7 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
       nationalId: form.nationalId.trim(),
       sessions: form.sessions,
       cost: parseInt(form.cost.replaceAll(",", "") || "0"),
+      uidCart: form.uidCart,
     };
 
     if (editingUser && user) {
@@ -118,6 +138,7 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
           lastName: payload.lastName,
           phone: payload.phone,
           nationalId: payload.nationalId,
+          uidCart: payload.uidCart,
         },
         { sessions: payload.sessions, cost: payload.cost },
         records.map((r) => r.date.toString())
@@ -180,7 +201,7 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
 
       <form onSubmit={submit} className="space-y-8">
         {/* Inputs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
           <Field
             label="نام"
             value={form.firstName}
@@ -213,6 +234,18 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
             onChange={(v) => updateField("cost", v)}
             icon={<CreditCard size={18} className="text-slate-400" />}
           />
+          {form.uidCart ? (
+            editingUser ? (
+              <div className="text-emerald-600">
+                در صورتی که می‌خواهید کارت جدید صادر کنید، آن را در دستگاه
+                بگذارید
+              </div>
+            ) : (
+              <div className="text-emerald-600">کارت شناسایی شد </div>
+            )
+          ) : (
+            <div className="text-red-500">کارت را در دستگاه بگذارید</div>
+          )}
         </div>
 
         {/* Sessions Counter */}

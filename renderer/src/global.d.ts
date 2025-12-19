@@ -4,6 +4,7 @@ export interface UserAttributes {
   lastName: string;
   phone: string;
   nationalId: string;
+  uidCart: string;
 }
 export interface UserCourseSummary {
   id: number;
@@ -35,6 +36,7 @@ export interface UserFindByIdResult {
   lastName: string;
   phone: string;
   nationalId: string;
+  uidCart: string;
   course: {
     id: number;
     cost: number;
@@ -127,6 +129,12 @@ export type RendererElectronAPI = {
     sessions?: SessionUpdateInput[]
   ) => Promise<UserFindByIdResult>;
   deleteUser: (id: number) => Promise<number>;
+  useSession: (uidCart: string) => Promise<{
+    success: boolean;
+    message: string;
+  }>;
+  checkDevice: () => Promise<"online" | "offline">;
+
   //calender
   getCalender: (start: string, end: string) => Promise<SessionResult[]>;
   //billing
@@ -138,11 +146,8 @@ export type RendererElectronAPI = {
   dashboardGetStats: () => Promise<DashboardStats>;
   //RFID
   ipcRenderer: {
-    on: (
-      channel: string,
-      listener: (...args: any[]) => void
-    ) => Electron.IpcRenderer;
-    removeListener: (channel: string, listener: any) => Electron.IpcRenderer;
+    on: (channel: string, listener: (...args: any[]) => void) => any;
+    removeListener: (channel: string, listener: any) => any;
   };
 };
 

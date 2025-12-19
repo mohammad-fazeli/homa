@@ -9,6 +9,7 @@ import {
 import { UserModel } from "../db/models/UserModel";
 import { CourseModel } from "../db/models/CourseModel";
 import { SessionModel } from "../db/models/SessionModel";
+import { rfidConnect } from "../ipc/rfid";
 
 export function registerUserHandlers() {
   ipcMain.handle(
@@ -39,6 +40,7 @@ export function registerUserHandlers() {
           }
         }
       }
+
       return newUser;
     }
   );
@@ -85,7 +87,91 @@ export function registerUserHandlers() {
     }
   );
 
-  ipcMain.handle("delete-user", async (event, userId: number) => {
+  ipcMain.handle("delete-user", async (_event, userId: number) => {
     return await UserModel.delete(userId);
+  });
+
+  ipcMain.handle(
+    "use-session",
+    async (
+      _event,
+      uidCart: string
+    ): Promise<{
+      success: boolean;
+      message: string;
+    }> => {
+      const user = UserModel.findByUidCart(uidCart);
+
+      if (!user) {
+        return { success: false, message: "کارت معتبر نیست" };
+      }
+
+      const sessions = user.course?.sessions;
+
+      if (!sessions) {
+        return {
+          success: false,
+          message: "جلسه‌ای وجود ندارد",
+        };
+      }
+      const TOLERANCE_MINUTES = 20;
+
+      const now = new Date();
+      const nowTs = now.getTime();
+
+      const toleranceMs = TOLERANCE_MINUTES * 60 * 1000;
+
+      const startOfToday = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate()
+      ).getTime();
+
+      const endOfToday = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 1
+      ).getTime();
+
+      const validSessions = sessions.filter((session) => {
+        const sessionTs = new Date(session.date).getTime();
+
+        const isToday = sessionTs >= startOfToday && sessionTs < endOfToday;
+
+        if (!isToday) return false;
+
+        const inTolerance =
+          sessionTs >= nowTs - toleranceMs && sessionTs <= nowTs + toleranceMs;
+
+        return inTolerance;
+      });
+
+      if (validSessions.length === 0) {
+        return {
+          success: false,
+          message: "جلسه ای یافت نشد.",
+        };
+      }
+
+      if (validSessions[0].used === 0) {
+        SessionModel.useSession(
+          validSessions[0].id,
+          new Date().toLocaleString()
+        );
+        return {
+          success: true,
+          message: "جلسه با موفقیت ثبت شد",
+        };
+      } else {
+        return {
+          success: true,
+          message: "جلسه استفاده شده است.",
+        };
+      }
+    }
+  );
+
+  ipcMain.handle("check-device", (_event) => {
+    return rfidConnect;
   });
 }

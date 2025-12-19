@@ -27,6 +27,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     course?: { cost: number; sessions: number; id: number },
     sessions?: SessionUpdateInput[]
   ) => ipcRenderer.invoke("update-user", user, course, sessions),
+  useSession: (uidCart: string) => ipcRenderer.invoke("use-session", uidCart),
+  checkDevice: () => ipcRenderer.invoke("check-device"),
   //calender
   getCalender: (start: string | Date, end: string | Date) =>
     ipcRenderer.invoke("get-calender", start, end),

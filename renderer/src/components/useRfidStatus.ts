@@ -8,6 +8,10 @@ export function useRfidStatus() {
       setPing(status);
     };
 
+    window.electronAPI?.checkDevice().then((e) => {
+      setPing(e);
+    });
+
     window.electronAPI?.ipcRenderer.on("rfid:status", (e) => {
       handler(e);
     });

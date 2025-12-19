@@ -15,7 +15,6 @@ export default function AppRoutes() {
       <Route path="/users/edit" element={<EditUser />} />
       <Route path="/sessions" element={<Sessions />} />
       <Route path="/billing" element={<Billing />} />
-      Billing
     </Routes>
   );
 }

@@ -6,21 +6,8 @@ import {
   UserFindAllResult,
   UserFindByIdResult,
   UserCourseSummary,
+  UserAttributes,
 } from "../types";
-
-/**
- * تبدیل نتیجه DB به User مدل
- */
-function mapUser(row: any) {
-  if (!row) return null;
-  return {
-    id: row.id,
-    firstName: row.firstName,
-    lastName: row.lastName,
-    phone: row.phone,
-    nationalId: row.nationalId,
-  };
-}
 
 export const UserModel = {
   findAll(page = 1, limit = 15, search = ""): UserFindAllResult {
@@ -169,6 +156,7 @@ export const UserModel = {
         lastName: user.lastName,
         phone: user.phone,
         nationalId: user.nationalId,
+        uidCart: user.uidCart,
         course: null,
       };
     }
@@ -189,6 +177,7 @@ export const UserModel = {
       lastName: user.lastName,
       phone: user.phone,
       nationalId: user.nationalId,
+      uidCart: user.uidCart,
       course: {
         id: course.id,
         cost: course.cost,
@@ -203,20 +192,80 @@ export const UserModel = {
     };
   },
 
+  findByUidCart(uidCart: string): UserFindByIdResult | null {
+    const user: any = db
+      .prepare(`SELECT * FROM Users WHERE uidCart = ?`)
+      .get(uidCart);
+    if (!user) return null;
+
+    const course: any = db
+      .prepare(
+        `
+        SELECT * FROM Courses
+        WHERE userId = ?
+        ORDER BY id DESC
+        LIMIT 1
+      `
+      )
+      .get(user.id);
+
+    if (!course) {
+      return {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        nationalId: user.nationalId,
+        uidCart: user.uidCart,
+        course: null,
+      };
+    }
+
+    const sessions = db
+      .prepare(
+        `
+        SELECT * FROM Sessions
+        WHERE courseId = ?
+        ORDER BY date DESC
+      `
+      )
+      .all(course.id);
+
+    return {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+      nationalId: user.nationalId,
+      uidCart: user.uidCart,
+      course: {
+        id: course.id,
+        cost: course.cost,
+        totalSessions: course.sessions,
+        sessions: sessions.map((s: any) => ({
+          id: s.id,
+          date: s.date,
+          used: s.used,
+          usedAt: s.usedAt,
+        })),
+      },
+    };
+  },
   // ================================
   // CREATE USER
   // ================================
   create(data: UserCreateInput) {
     const stmt = db.prepare(`
-      INSERT INTO Users (firstName, lastName, phone, nationalId)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO Users (firstName, lastName, phone, nationalId, uidCart)
+      VALUES (?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
       data.firstName,
       data.lastName,
       data.phone,
-      data.nationalId
+      data.nationalId,
+      data.uidCart
     );
 
     return this.findById(result.lastInsertRowid as number);
@@ -232,10 +281,17 @@ export const UserModel = {
     db.prepare(
       `
     UPDATE Users
-    SET firstName = ?, lastName = ?, phone = ?, nationalId = ?
+    SET firstName = ?, lastName = ?, phone = ?, nationalId = ?, uidCart = ?
     WHERE id = ?
   `
-    ).run(data.firstName, data.lastName, data.phone, data.nationalId, data.id);
+    ).run(
+      data.firstName,
+      data.lastName,
+      data.phone,
+      data.nationalId,
+      data.id,
+      data.uidCart
+    );
 
     return this.findById(data.id);
   },

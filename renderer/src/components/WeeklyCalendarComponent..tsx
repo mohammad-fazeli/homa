@@ -45,7 +45,7 @@ function getRecordColor(ev: CalendarEvent, currentUserId?: number) {
   return "bg-red-500";
 }
 
-const HOURS = Array.from({ length: 14 }, (_, i) => 8 + i);
+const HOURS = Array.from({ length: 17 }, (_, i) => 8 + i);
 const WEEKDAYS_FA = [
   "شنبه",
   "یکشنبه",
@@ -93,7 +93,10 @@ export default function WeeklyCalendar({
     const day = d.getDay();
     const diff = (day + 1) % 7; // Saturday = 0
     d.setDate(d.getDate() - diff + 7);
-    loadEvents(currentWeek.toLocaleString(), d.toLocaleString());
+    loadEvents(
+      currentWeek.setHours(0, 0, 0, 0).toLocaleString(),
+      d.toLocaleString()
+    );
   }, [currentWeek]);
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(currentWeek, i));
@@ -231,7 +234,7 @@ export default function WeeklyCalendar({
                       )}`}
                     >
                       {ev.used
-                        ? "استفاده شده" + ev.title
+                        ? ev.title
                         : ev.userId === currentUserId
                         ? "رزرو کاربر فعلی"
                         : ev.title}

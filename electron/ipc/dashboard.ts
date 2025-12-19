@@ -1,10 +1,5 @@
 import { ipcMain } from "electron";
-import {
-  AppConnectionStatus,
-  DashboardStats,
-  MonthlyIncomeItem,
-  WeeklySessionItem,
-} from "../db/types";
+import { DashboardStats } from "../db/types";
 import { db } from "../db";
 
 export function registerDashboardHandlers() {
@@ -47,7 +42,6 @@ export function registerDashboardHandlers() {
         )
         .get(currentWeek.toLocaleString(), d.toLocaleString()) as any
     ).count;
-    console.log("🚀 ~ weeklySessions:", weeklySessions);
 
     // Monthly Revenue
     const monthlyRevenue = (

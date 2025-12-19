@@ -65,6 +65,15 @@ export const SessionModel = {
     };
   },
 
+  findByTime(userId: number, start: string | Date, end: string | Date) {
+    console.log("🚀 ~ end:", end);
+    console.log("🚀 ~ start:", start);
+    const sessions = this.findAll(start, end);
+    console.log("🚀 ~ sessions:", sessions);
+
+    return sessions.find((s) => s.userId === userId && s.used === 0);
+  },
+
   update(courseId: number, data: SessionUpdateInput[]) {
     this.deletesByCourseId(courseId);
     for (const session of data) {
@@ -77,6 +86,18 @@ export const SessionModel = {
     }
   },
 
+  useSession(id: number, usedAt: string) {
+    db.prepare(
+      `
+      UPDATE Sessions
+      SET used = 1,
+          usedAt = ?,
+          updatedAt = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `
+    ).run(usedAt, id);
+  },
+
   deletesByCourseId(courseId: number) {
     db.prepare(`DELETE FROM Sessions WHERE courseId = ?`).run(courseId);
   },
@@ -86,9 +107,6 @@ export const SessionModel = {
   },
 
   findAll(start: string | Date, end: string | Date): SessionResult[] {
-    const startNormalized = start;
-    const endNormalized = end;
-
     const rows = db
       .prepare(
         `
@@ -110,7 +128,7 @@ export const SessionModel = {
       ORDER BY s.date ASC
       `
       )
-      .all(startNormalized, endNormalized);
+      .all(start, end);
 
     return rows.map((row: any) => {
       return {

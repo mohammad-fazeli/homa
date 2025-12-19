@@ -2,9 +2,11 @@
 import { BrowserWindow } from "electron";
 import SerialRFID from "../rfid/serial-rfid";
 
-export async function registerRfidHandlers(win: BrowserWindow) {
-  const rfid = new SerialRFID();
+export const rfid = new SerialRFID();
 
+export let rfidConnect: "online" | "offline" = "offline";
+
+export async function registerRfidHandlers(win: BrowserWindow) {
   const sendStatus = (status: "online" | "offline") => {
     win.webContents.send("rfid:status", status);
   };
@@ -13,6 +15,7 @@ export async function registerRfidHandlers(win: BrowserWindow) {
 
   if (ports.length === 0) {
     sendStatus("offline");
+    rfidConnect = "offline";
     console.error("❌ No RFID device found");
     return;
   }
@@ -22,8 +25,10 @@ export async function registerRfidHandlers(win: BrowserWindow) {
   try {
     await rfid.open(port, { baudRate: 9600, reconnectDelay: 1500 });
     sendStatus("online");
+    rfidConnect = "online";
   } catch (e) {
     sendStatus("offline");
+    rfidConnect = "offline";
     return;
   }
 

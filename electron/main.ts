@@ -10,7 +10,6 @@ import { registerDashboardHandlers } from "./ipc/dashboard";
 
 dotenv.config();
 
-console.log("🚀 ~ process.env.NODE_ENV:", process.env.NODE_ENV);
 const isDev = process.env.NODE_ENV === "development";
 
 function createWindow() {
@@ -36,6 +35,7 @@ function createWindow() {
     });
 
     win.removeMenu();
+    win.webContents.openDevTools();
 
     win.webContents.on("before-input-event", (event, input) => {
       if (

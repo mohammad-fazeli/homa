@@ -8,6 +8,7 @@ export interface UserAttributes {
   lastName: string;
   phone: string;
   nationalId: string;
+  uidCart: string;
 }
 
 export interface UserCreateInput extends Omit<UserAttributes, "id"> {}
@@ -112,6 +113,7 @@ export interface UserFindByIdResult {
   lastName: string;
   phone: string;
   nationalId: string;
+  uidCart: string;
   course: {
     id: number;
     cost: number;
@@ -170,4 +172,12 @@ export interface MonthlyIncomeItem {
 export interface AppConnectionStatus {
   status: "online";
   timestamp: number;
+}
+
+import Database from "better-sqlite3";
+
+export interface Migration {
+  version: number;
+  name: string;
+  up: (db: Database.Database) => void;
 }
