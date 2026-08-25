@@ -1,5 +1,4 @@
-import React from "react";
-import WeeklyCalendar from "../components/WeeklyCalendarComponent.";
+import WeeklyCalendar from "../components/WeeklyCalendar";
 
 const Sessions = () => {
   return (

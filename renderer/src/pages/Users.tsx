@@ -1,29 +1,36 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { useUsersStore } from "../store/users";
 import UsersList from "../components/UsersList";
 import { Link } from "react-router-dom";
+import Modal from "../components/Modal";
+import ConfirmDelete from "../components/forms/ConfirmDelete";
+import { toast } from "react-toastify";
 
 export default function Users() {
-  const { users, query, isLoading, setQuery, loadUsers, page } =
-    useUsersStore();
+  const {
+    users,
+    query,
+    isLoading,
+    setQuery,
+    loadUsers,
+    page,
+    deleteUserId,
+    setDeleteUserId,
+    deleteUser,
+  } = useUsersStore();
+  const [draft, setDraft] = useState(query);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (draft !== query) setQuery(draft);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [draft, query, setQuery]);
 
   useEffect(() => {
     loadUsers();
-  }, [loadUsers, page]);
-
-  const filtered = users.filter((u) => {
-    const full = (
-      u.firstName +
-      " " +
-      u.lastName +
-      " " +
-      u.phone +
-      " " +
-      u.nationalId
-    ).toLowerCase();
-    return full.includes(query.toLowerCase());
-  });
+  }, [loadUsers, page, query]);
 
   return (
     <div>
@@ -31,14 +38,14 @@ export default function Users() {
         <div className="flex items-center justify-between gap-4">
           <div className="relative">
             <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
               placeholder="جستجو بر اساس نام، تلفن یا کد ملی..."
               className="w-72 pr-10 py-2 pl-4 rounded-lg border bg-white border-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400"
             />
-            <button className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
               <Search size={16} />
-            </button>
+            </span>
           </div>
 
           <Link
@@ -51,8 +58,25 @@ export default function Users() {
       </header>
 
       <main className="max-w-6xl mx-auto">
-        <UsersList isLoading={isLoading} users={filtered} />
+        <UsersList isLoading={isLoading} users={users} />
       </main>
+
+      {deleteUserId !== null && (
+        <Modal onClose={() => setDeleteUserId(null)}>
+          <ConfirmDelete
+            onConfirm={async () => {
+              try {
+                await deleteUser(deleteUserId);
+              } catch (err) {
+                const message =
+                  err instanceof Error ? err.message : "حذف کاربر ناموفق بود";
+                toast.error(message);
+              }
+            }}
+            onCancel={() => setDeleteUserId(null)}
+          />
+        </Modal>
+      )}
     </div>
   );
 }

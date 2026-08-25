@@ -48,6 +48,10 @@ export type SessionResult = SessionAttributes & {
   start: Date;
 };
 
+export interface NextSessionInfo {
+  nextSessionDate: string | Date | null;
+}
+
 export interface UserCourseSummary {
   id: number;
   userId: number;
@@ -126,10 +130,17 @@ export interface DashboardStats {
   monthlyRevenue: number;
 }
 
-import type Database from "better-sqlite3";
+export interface WeeklySessionItem {
+  day: number;
+  value: number;
+}
 
-export interface Migration {
-  version: number;
-  name: string;
-  up: (db: Database.Database) => void;
+export interface MonthlyIncomeItem {
+  month: string;
+  value: number;
+}
+
+export interface AppConnectionStatus {
+  status: "online";
+  timestamp: number;
 }

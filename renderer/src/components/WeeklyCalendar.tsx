@@ -27,6 +27,7 @@ interface WeeklyCalendarProps {
 
 function getWeekStart(date: Date): Date {
   const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
   const day = d.getDay();
   const diff = (day + 1) % 7;
   d.setDate(d.getDate() - diff);
@@ -69,7 +70,6 @@ function formatDateFa(d: Date) {
 
 function isNowCell(cellDate: Date) {
   const now = new Date();
-
   return (
     cellDate.getFullYear() === now.getFullYear() &&
     cellDate.getMonth() === now.getMonth() &&
@@ -83,21 +83,17 @@ export default function WeeklyCalendar({
   onAddEvent,
   currentUserId = -1,
 }: WeeklyCalendarProps) {
-  const [currentWeek, setCurrentWeek] = useState<Date>(
+  const [currentWeek, setCurrentWeek] = useState<Date>(() =>
     getWeekStart(new Date())
   );
   const { loadEvents, allEvents: storeEvents } = useCalendarStore();
 
   useEffect(() => {
-    const d = new Date(currentWeek);
-    const day = d.getDay();
-    const diff = (day + 1) % 7; // Saturday = 0
-    d.setDate(d.getDate() - diff + 7);
-    loadEvents(
-      currentWeek.setHours(0, 0, 0, 0).toLocaleString(),
-      d.toLocaleString()
-    );
-  }, [currentWeek]);
+    const start = new Date(currentWeek);
+    start.setHours(0, 0, 0, 0);
+    const end = addDays(start, 7);
+    loadEvents(start.toISOString(), end.toISOString());
+  }, [currentWeek, loadEvents]);
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(currentWeek, i));
 
@@ -109,7 +105,7 @@ export default function WeeklyCalendar({
 
   const handleCellClick = (day: Date, hour: number) => {
     const start = new Date(day);
-    start.setHours(hour, 0, 0);
+    start.setHours(hour, 0, 0, 0);
     const findEvent = storeEvents.find((ev) => {
       const evDate = new Date(ev.start);
       return (
@@ -147,7 +143,7 @@ export default function WeeklyCalendar({
             <ChevronRight size={18} />
           </button>
 
-          <h2 className="text-lg font-semibold bg-linier-to-r from-indigo-600 to-sky-500 bg-clip-text text-transparent">
+          <h2 className="text-lg font-semibold bg-linear-to-r from-indigo-600 to-sky-500 bg-clip-text text-transparent">
             تقویم هفتگی
           </h2>
 
@@ -198,7 +194,7 @@ export default function WeeklyCalendar({
 
             {days.map((day, i) => {
               const cellDate = new Date(day);
-              cellDate.setHours(hour);
+              cellDate.setHours(hour, 0, 0, 0);
 
               const cellEvents = allEvents.filter((ev) => {
                 const evDate = new Date(ev.start);
@@ -214,7 +210,7 @@ export default function WeeklyCalendar({
 
               return (
                 <div
-                  key={i}
+                  key={`${day.toISOString()}-${hour}`}
                   onClick={() => handleCellClick(day, hour)}
                   className={`relative border-b border-r border-slate-200 h-12 cursor-pointer transition hover:bg-slate-50
                     ${
@@ -223,9 +219,9 @@ export default function WeeklyCalendar({
                         : ""
                     }`}
                 >
-                  {cellEvents.map((ev, i) => (
+                  {cellEvents.map((ev, idx) => (
                     <motion.div
-                      key={ev.id + new Date(ev.start).getTime() + i}
+                      key={ev.id + new Date(ev.start).getTime() + idx}
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       className={`absolute inset-0.5 text-white text-[10px] rounded-md p-1 shadow ${getRecordColor(
@@ -236,8 +232,8 @@ export default function WeeklyCalendar({
                       {ev.used
                         ? ev.title
                         : ev.userId === currentUserId
-                        ? "رزرو کاربر فعلی"
-                        : ev.title}
+                          ? "رزرو کاربر فعلی"
+                          : ev.title}
                     </motion.div>
                   ))}
                 </div>

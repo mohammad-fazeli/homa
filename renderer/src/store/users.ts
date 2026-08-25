@@ -19,15 +19,16 @@ interface UsersStore {
 
   editingUser: boolean;
   deleteUserId: number | null;
+  capturingUid: boolean;
 
   setPage: (p: number) => void;
-  setTotalPages: (p: number) => void;
   setQuery: (q: string) => void;
   setUser: (v: UserFindByIdResult | null) => void;
   clearUser: () => void;
 
   setEditingUser: (u: boolean) => void;
   setDeleteUserId: (id: number | null) => void;
+  setCapturingUid: (v: boolean) => void;
 
   loadUsers: () => Promise<void>;
   getUser: (id: number) => Promise<void>;
@@ -42,7 +43,6 @@ interface UsersStore {
     sessions?: SessionUpdateInput[]
   ) => Promise<void>;
   deleteUser: (id: number) => Promise<void>;
-  changeSessions: (id: number, delta: number) => Promise<void>;
 }
 
 export const useUsersStore = create<UsersStore>((set, get) => ({
@@ -55,28 +55,32 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
   totalPages: 1,
   isLoading: false,
 
-  sessionLog: null,
   editingUser: false,
   deleteUserId: null,
+  capturingUid: false,
 
   setPage: (p) => set({ page: p }),
-  setTotalPages: (p) => set({ totalPages: p }),
-  setQuery: (q) => set({ query: q }),
+  setQuery: (q) => set({ query: q, page: 1 }),
   setUser: (u) => set({ user: u }),
   clearUser: () => set({ user: null }),
   setEditingUser: (u) => set({ editingUser: u }),
   setDeleteUserId: (id) => set({ deleteUserId: id }),
+  setCapturingUid: (v) => set({ capturingUid: v }),
 
   loadUsers: async () => {
     set({ isLoading: true });
     try {
-      const data = await window.electronAPI?.getUsers(get().page, get().limit);
+      const data = await window.electronAPI?.getUsers(
+        get().page,
+        get().limit,
+        get().query
+      );
       set({
         users: data?.data ?? [],
-        total: data?.total,
-        page: data?.page,
-        limit: data?.limit,
-        totalPages: data?.totalPages,
+        total: data?.total ?? 0,
+        page: data?.page ?? 1,
+        limit: data?.limit ?? get().limit,
+        totalPages: data?.totalPages ?? 1,
         isLoading: false,
       });
     } catch {
@@ -96,9 +100,7 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
   getUser: async (userId) => {
     const result = await window.electronAPI?.getUser(userId);
     if (!result) return;
-    set({
-      user: result,
-    });
+    set({ user: result });
   },
 
   updateUser: async (
@@ -108,21 +110,12 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
   ) => {
     await window.electronAPI?.updateUser?.(user, course, sessions);
     await get().loadUsers();
-    set({
-      editingUser: false,
-    });
+    set({ editingUser: false });
   },
 
   deleteUser: async (id) => {
     await window.electronAPI?.deleteUser?.(id);
     await get().loadUsers();
     set({ deleteUserId: null });
-  },
-
-  changeSessions: async (id, delta) => {
-    const user = get().users.find((u) => u.id === id);
-    if (!user) return;
-
-    await get().loadUsers();
   },
 }));

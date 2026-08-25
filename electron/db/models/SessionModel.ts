@@ -5,6 +5,21 @@ import {
   SessionUpdateInput,
 } from "../types";
 
+function mapSessionRow(row: any): SessionResult {
+  return {
+    id: row.id,
+    courseId: row.courseId,
+    date: row.date,
+    used: row.used,
+    usedAt: row.usedAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    userId: row.userId,
+    title: `${row.firstName} ${row.lastName}`,
+    start: new Date(row.date),
+  };
+}
+
 export const SessionModel = {
   create(data: SessionCreateInput): SessionResult {
     const stmt = db.prepare(`
@@ -22,7 +37,7 @@ export const SessionModel = {
     return this.findById(result.lastInsertRowid as number)!;
   },
 
-  findById(id: number): SessionResult {
+  findById(id: number): SessionResult | null {
     const row: any = db
       .prepare(
         `
@@ -46,44 +61,23 @@ export const SessionModel = {
       )
       .get(id);
 
-    if (!row) {
-      throw new Error("Session not found");
-    }
-
-    return {
-      id: row.id,
-      courseId: row.courseId,
-      date: row.date,
-      used: row.used,
-      usedAt: row.usedAt,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-
-      userId: row.userId,
-      title: `${row.firstName} ${row.lastName}`,
-      start: new Date(row.date),
-    };
-  },
-
-  findByTime(userId: number, start: string | Date, end: string | Date) {
-    console.log("🚀 ~ end:", end);
-    console.log("🚀 ~ start:", start);
-    const sessions = this.findAll(start, end);
-    console.log("🚀 ~ sessions:", sessions);
-
-    return sessions.find((s) => s.userId === userId && s.used === 0);
+    if (!row) return null;
+    return mapSessionRow(row);
   },
 
   update(courseId: number, data: SessionUpdateInput[]) {
-    this.deletesByCourseId(courseId);
-    for (const session of data) {
-      this.create({
-        courseId: courseId,
-        date: session.date,
-        used: session.used,
-        usedAt: session.usedAt,
-      });
-    }
+    const sync = db.transaction(() => {
+      this.deletesByCourseId(courseId);
+      for (const session of data) {
+        this.create({
+          courseId,
+          date: session.date,
+          used: session.used,
+          usedAt: session.usedAt,
+        });
+      }
+    });
+    sync();
   },
 
   useSession(id: number, usedAt: string) {
@@ -107,6 +101,10 @@ export const SessionModel = {
   },
 
   findAll(start: string | Date, end: string | Date): SessionResult[] {
+    const startIso =
+      start instanceof Date ? start.toISOString() : String(start);
+    const endIso = end instanceof Date ? end.toISOString() : String(end);
+
     const rows = db
       .prepare(
         `
@@ -124,26 +122,12 @@ export const SessionModel = {
       FROM Sessions s
       JOIN Courses c ON s.courseId = c.id
       JOIN Users u ON c.userId = u.id
-      WHERE s.date BETWEEN ? AND ?
+      WHERE datetime(s.date) BETWEEN datetime(?) AND datetime(?)
       ORDER BY s.date ASC
       `
       )
-      .all(start, end);
+      .all(startIso, endIso);
 
-    return rows.map((row: any) => {
-      return {
-        id: row.id,
-        courseId: row.courseId,
-        date: row.date,
-        used: row.used,
-        usedAt: row.usedAt,
-        createdAt: row.createdAt,
-        updatedAt: row.updatedAt,
-
-        userId: row.userId,
-        title: `${row.firstName} ${row.lastName}`,
-        start: new Date(row.date),
-      };
-    });
+    return (rows as any[]).map(mapSessionRow);
   },
 };

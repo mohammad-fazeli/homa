@@ -10,60 +10,84 @@ import { registerDashboardHandlers } from "./ipc/dashboard";
 
 dotenv.config();
 
-const isDev = process.env.NODE_ENV === "development";
+const isDev = !app.isPackaged;
+
+let mainWindow: BrowserWindow | null = null;
+let windowHandlersRegistered = false;
+
+function getMainWindow() {
+  return mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
+}
+
+function registerWindowHandlers() {
+  if (windowHandlersRegistered) return;
+  windowHandlersRegistered = true;
+
+  ipcMain.on("window:minimize", () => getMainWindow()?.minimize());
+  ipcMain.on("window:maximize", () => {
+    const win = getMainWindow();
+    if (!win) return;
+    win.isMaximized() ? win.unmaximize() : win.maximize();
+  });
+  ipcMain.on("window:close", () => getMainWindow()?.close());
+}
 
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    minWidth: 900,
+    minHeight: 640,
     frame: false,
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
       devTools: isDev,
     },
   });
 
+  const win = mainWindow;
+
+  win.once("ready-to-show", () => win.show());
+
   if (isDev) {
     win.loadURL("http://localhost:5173");
-    win.webContents.openDevTools();
+    win.webContents.openDevTools({ mode: "detach" });
   } else {
-    win.loadFile(path.join(__dirname, "./../renderer/dist/index.html"));
+    win.loadFile(path.join(__dirname, "../renderer/dist/index.html"));
+    win.removeMenu();
     win.webContents.on("devtools-opened", () => {
       win.webContents.closeDevTools();
     });
-
-    win.removeMenu();
-    win.webContents.openDevTools();
-
     win.webContents.on("before-input-event", (event, input) => {
-      if (
-        !isDev &&
-        input.control &&
-        input.shift &&
-        input.key.toLowerCase() === "i"
-      ) {
+      if (input.control && input.shift && input.key.toLowerCase() === "i") {
         event.preventDefault();
       }
     });
   }
 
-  ipcMain.on("window:minimize", () => win.minimize());
-  ipcMain.on("window:maximize", () => {
-    win.isMaximized() ? win.unmaximize() : win.maximize();
+  win.on("closed", () => {
+    if (mainWindow === win) mainWindow = null;
   });
-  ipcMain.on("window:close", () => win.close());
+
   registerRfidHandlers(win);
 }
 
 app.whenReady().then(() => {
+  initDatabase();
+  registerWindowHandlers();
   registerUserHandlers();
   registerCalendarHandlers();
   registerBillingHandlers();
   registerDashboardHandlers();
   createWindow();
-  initDatabase();
+});
+
+app.on("activate", () => {
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
 app.on("window-all-closed", () => {

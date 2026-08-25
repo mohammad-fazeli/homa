@@ -1,35 +1,29 @@
 import { useEffect } from "react";
 import { Card, CardContent } from "../components/card";
-
 import { Users, Calendar, CreditCard, Wifi, WifiOff, Plus } from "lucide-react";
 import { motion } from "framer-motion";
-
 import { useDashboardStore } from "../store/dashboard";
 import { useRfidStatus } from "../components/useRfidStatus";
 import { Link } from "react-router-dom";
 
-// =======================
-// Component
-// =======================
 export default function Dashboard() {
   const { loadData, statsResult } = useDashboardStore();
   const ping = useRfidStatus();
+
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   return (
     <div className="p-8 space-y-10">
-      {/* ================= Header ================= */}
       <motion.h1
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-3xl font-bold bg-linier-to-r from-indigo-600 to-sky-500 bg-clip-text text-transparent"
+        className="text-3xl font-bold bg-linear-to-r from-indigo-600 to-sky-500 bg-clip-text text-transparent"
       >
         داشبورد مدیریتی
       </motion.h1>
 
-      {/* ================= Stats ================= */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <StatCard
           title="مشتریان فعال"
@@ -49,7 +43,6 @@ export default function Dashboard() {
           icon={<CreditCard className="text-emerald-500" />}
         />
 
-        {/* Connection Status */}
         <Card className="rounded-2xl shadow-lg border border-slate-100">
           <CardContent className="p-6 flex items-center justify-between">
             <div>
@@ -71,7 +64,6 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* ================= Charts ================= */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <Link
           to="/users"
@@ -96,9 +88,6 @@ export default function Dashboard() {
   );
 }
 
-// =======================
-// Components
-// =======================
 type StatCardProps = {
   title: string;
   value: number | string;

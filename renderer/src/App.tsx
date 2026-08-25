@@ -3,21 +3,25 @@ import AppRoutes from "./routes/AppRoutes";
 import Sidebar from "./components/Sidebar";
 import { useEffect } from "react";
 import { ToastContainer, toast } from "react-toastify";
+import { useUsersStore } from "./store/users";
 
 export default function App() {
-  const cb = async (e: string) => {
-    const result = await window.electronAPI?.useSession(e);
-    toast(result?.message, {
-      type: result?.success ? "success" : "error",
-    });
-  };
   useEffect(() => {
-    window.electronAPI?.ipcRenderer.on("rfid-card-present", cb);
+    const onCard = async (uid: string) => {
+      if (useUsersStore.getState().capturingUid) return;
+      const result = await window.electronAPI?.useSession(uid);
+      if (!result) return;
+      toast(result.message, {
+        type: result.success ? "success" : "error",
+      });
+    };
 
+    window.electronAPI?.ipcRenderer.on("rfid-card-present", onCard);
     return () => {
-      window.electronAPI?.ipcRenderer.removeListener("rfid-card-present", cb);
+      window.electronAPI?.ipcRenderer.removeListener("rfid-card-present", onCard);
     };
   }, []);
+
   return (
     <HashRouter>
       <ToastContainer position="top-left" rtl={true} theme="colored" />

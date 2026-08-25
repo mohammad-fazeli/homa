@@ -13,7 +13,7 @@ export function registerBillingHandlers() {
   // ===============================
   ipcMain.handle("billing:getSummary", async (): Promise<BillingSummary> => {
     const totalUsers = (
-      db.prepare(`SELECT COUNT(*) as count FROM Users`).get() as any
+      db.prepare(`SELECT COUNT(*) as count FROM Users`).get() as { count: number }
     ).count;
 
     const courseStats = db
@@ -26,7 +26,11 @@ export function registerBillingHandlers() {
         FROM Courses
       `
       )
-      .get() as any;
+      .get() as {
+      totalCourses: number;
+      totalRevenue: number;
+      avgCoursePrice: number;
+    };
 
     return {
       totalUsers,
@@ -69,13 +73,13 @@ export function registerBillingHandlers() {
     const used = (
       db
         .prepare(`SELECT COUNT(*) as count FROM Sessions WHERE used = 1`)
-        .get() as any
+        .get() as { count: number }
     ).count;
 
     const remaining = (
       db
         .prepare(`SELECT COUNT(*) as count FROM Sessions WHERE used = 0`)
-        .get() as any
+        .get() as { count: number }
     ).count;
 
     return { used, remaining };

@@ -1,13 +1,10 @@
 import { ipcMain } from "electron";
 import { DashboardStats } from "../db/types";
 import { db } from "../db";
+import { addDays, startOfWeekSaturday } from "../lib/utils";
 
 export function registerDashboardHandlers() {
-  // =====================================
-  // DASHBOARD STATS
-  // =====================================
-  ipcMain.handle("dashboard:getStats", async (): Promise<DashboardStats> => {
-    // Active Users (users with at least one course)
+  ipcMain.handle("dashboard:getStats", (): DashboardStats => {
     const activeUsers = (
       db
         .prepare(
@@ -17,33 +14,24 @@ export function registerDashboardHandlers() {
           JOIN Courses c ON c.userId = u.id
         `
         )
-        .get() as any
+        .get() as { count: number }
     ).count;
 
-    const currentWeek = new Date();
-    const day = currentWeek.getDay();
-    const diff = (day + 1) % 7;
-    currentWeek.setDate(currentWeek.getDate() - diff);
+    const weekStart = startOfWeekSaturday();
+    const weekEnd = addDays(weekStart, 7);
 
-    const d = new Date(currentWeek);
-    const dDay = d.getDay();
-    const dDiff = (dDay + 1) % 7; // Saturday = 0
-    d.setDate(d.getDate() - dDiff + 7);
-
-    // Weekly Sessions
     const weeklySessions = (
       db
         .prepare(
           `
       SELECT COUNT(*) AS count
       FROM Sessions
-      WHERE date BETWEEN ? AND ?
+      WHERE datetime(date) >= datetime(?) AND datetime(date) < datetime(?)
     `
         )
-        .get(currentWeek.toLocaleString(), d.toLocaleString()) as any
+        .get(weekStart.toISOString(), weekEnd.toISOString()) as { count: number }
     ).count;
 
-    // Monthly Revenue
     const monthlyRevenue = (
       db
         .prepare(
@@ -53,7 +41,7 @@ export function registerDashboardHandlers() {
           WHERE strftime('%Y-%m', createdAt) = strftime('%Y-%m', 'now')
         `
         )
-        .get() as any
+        .get() as { sum: number }
     ).sum;
 
     return {

@@ -9,8 +9,9 @@ import {
   Minus,
   ArrowLeft,
 } from "lucide-react";
-import WeeklyCalendar, { RecordItem } from "../WeeklyCalendarComponent.";
+import WeeklyCalendar, { RecordItem } from "../WeeklyCalendar";
 import { Link } from "react-router-dom";
+import { toast } from "react-toastify";
 
 interface FormState {
   firstName: string;
@@ -22,8 +23,24 @@ interface FormState {
   uidCart: string;
 }
 
+function sameHour(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate() &&
+    a.getHours() === b.getHours()
+  );
+}
+
 export default function UserForm({ onCancel }: { onCancel: () => void }) {
-  const { user, editingUser, addUser, updateUser, clearUser } = useUsersStore();
+  const {
+    user,
+    editingUser,
+    addUser,
+    updateUser,
+    setCapturingUid,
+  } = useUsersStore();
+  const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState<FormState>({
     firstName: "",
@@ -41,7 +58,11 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  /** مقداردهی اولیه هنگام ویرایش */
+  useEffect(() => {
+    setCapturingUid(true);
+    return () => setCapturingUid(false);
+  }, [setCapturingUid]);
+
   useEffect(() => {
     if (editingUser && user) {
       setForm({
@@ -51,13 +72,13 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
         nationalId: user.nationalId,
         sessions: user.course?.totalSessions ?? 0,
         cost: user.course?.cost?.toLocaleString() ?? "",
-        uidCart: user?.uidCart || "",
+        uidCart: user.uidCart || "",
       });
 
       setRecords(
         user.course?.sessions?.map((s) => ({ ...s, userId: user.id })) ?? []
       );
-    } else {
+    } else if (!editingUser) {
       setForm({
         firstName: "",
         lastName: "",
@@ -68,45 +89,43 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
         uidCart: "",
       });
       setRecords([]);
-      clearUser();
     }
-  }, [editingUser]);
+  }, [editingUser, user]);
 
   useEffect(() => {
     if (form.sessions < records.length) {
       const diff = records.length - form.sessions;
-
       setRecords((prev) => prev.slice(0, prev.length - diff));
     }
-  }, [form.sessions]);
+  }, [form.sessions, records.length]);
 
   useEffect(() => {
-    window.electronAPI?.ipcRenderer.on("rfid-card-present", (e) => {
-      setForm((prev) => ({ ...prev, uidCart: e }));
-    });
-
+    const onCard = (uid: string) => {
+      setForm((prev) => ({ ...prev, uidCart: uid }));
+    };
+    window.electronAPI?.ipcRenderer.on("rfid-card-present", onCard);
     return () => {
       window.electronAPI?.ipcRenderer.removeListener(
         "rfid-card-present",
-        (e: any) => {
-          setForm((prev) => ({ ...prev, uidCart: e }));
-        }
+        onCard
       );
     };
   }, []);
 
-  /** ثبت فرم */
-  const submit = (e?: React.FormEvent) => {
+  const submit = async (e?: React.FormEvent) => {
     e?.preventDefault();
 
     if (!form.firstName.trim() || !form.lastName.trim()) {
-      return alert("نام و نام‌خانوادگی را وارد کنید.");
+      toast.error("نام و نام‌خانوادگی را وارد کنید.");
+      return;
     }
     if (!form.phone.trim()) {
-      return alert("شماره تماس را وارد کنید.");
+      toast.error("شماره تماس را وارد کنید.");
+      return;
     }
     if (!form.nationalId.trim()) {
-      return alert("کد ملی را وارد کنید.");
+      toast.error("کد ملی را وارد کنید.");
+      return;
     }
 
     const payload = {
@@ -115,46 +134,53 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
       phone: form.phone.trim(),
       nationalId: form.nationalId.trim(),
       sessions: form.sessions,
-      cost: parseInt(form.cost.replaceAll(",", "") || "0"),
+      cost: parseInt(form.cost.replaceAll(",", "") || "0", 10),
       uidCart: form.uidCart,
     };
 
-    if (editingUser && user) {
-      updateUser(
-        { ...payload, id: user.id },
-        {
-          cost: payload.cost,
-          sessions: payload.sessions,
-          id: user.course?.id || -1,
-        },
-        records.map((r) => {
-          return { ...r, courseId: user.course?.id || -1 };
-        })
-      );
-    } else {
-      addUser(
-        {
-          firstName: payload.firstName,
-          lastName: payload.lastName,
-          phone: payload.phone,
-          nationalId: payload.nationalId,
-          uidCart: payload.uidCart,
-        },
-        { sessions: payload.sessions, cost: payload.cost },
-        records.map((r) => r.date.toString())
-      );
+    setSaving(true);
+    try {
+      if (editingUser && user) {
+        await updateUser(
+          { ...payload, id: user.id },
+          {
+            cost: payload.cost,
+            sessions: payload.sessions,
+            id: user.course?.id || -1,
+          },
+          records.map((r) => ({
+            ...r,
+            courseId: user.course?.id || -1,
+          }))
+        );
+        toast.success("مشتری به‌روزرسانی شد");
+      } else {
+        await addUser(
+          {
+            firstName: payload.firstName,
+            lastName: payload.lastName,
+            phone: payload.phone,
+            nationalId: payload.nationalId,
+            uidCart: payload.uidCart,
+          },
+          { sessions: payload.sessions, cost: payload.cost },
+          records.map((r) => new Date(r.date).toISOString())
+        );
+        toast.success("مشتری جدید ذخیره شد");
+      }
+      onCancel();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "خطا در ذخیره اطلاعات";
+      toast.error(message);
+    } finally {
+      setSaving(false);
     }
-
-    onCancel();
   };
 
-  /** مدیریت کلیک روی تقویم */
   const handleAddOrRemoveRecord = useCallback(
     (date: Date) => {
-      const iso = date.toLocaleString();
-      const exist = records.find(
-        (r) => new Date(r.date).toLocaleString() === iso
-      );
+      const exist = records.find((r) => sameHour(new Date(r.date), date));
 
       if (exist) {
         setRecords((prev) => prev.filter((r) => r.id !== exist.id));
@@ -165,22 +191,29 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
           ...prev,
           {
             id: Date.now(),
-            date: iso,
+            date: date.toISOString(),
             used: 0,
             usedAt: null,
             userId: user?.id ?? -1,
           },
         ]);
       } else {
-        return alert("تاریخ تمام جلسات تنظیم شد.");
+        toast.error("تاریخ تمام جلسات تنظیم شد.");
       }
     },
     [records, user, form.sessions]
   );
 
+  if (editingUser && !user) {
+    return (
+      <div className="bg-white rounded-3xl p-10 max-w-4xl mx-auto text-center text-slate-500">
+        در حال بارگذاری...
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-3xl p-10 max-w-4xl mx-auto border border-slate-100">
-      {/* Header */}
       <div className="mb-10 flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold bg-linear-to-r from-indigo-600 to-sky-500 bg-clip-text text-transparent">
@@ -200,7 +233,6 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
       </div>
 
       <form onSubmit={submit} className="space-y-8">
-        {/* Inputs */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
           <Field
             label="نام"
@@ -229,7 +261,8 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
           <Field
             label="هزینه (تومان)"
             value={parseInt(
-              form.cost.replaceAll(",", "") || "0"
+              form.cost.replaceAll(",", "") || "0",
+              10
             ).toLocaleString()}
             onChange={(v) => updateField("cost", v)}
             icon={<CreditCard size={18} className="text-slate-400" />}
@@ -237,18 +270,16 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
           {form.uidCart ? (
             editingUser ? (
               <div className="text-emerald-600">
-                در صورتی که می‌خواهید کارت جدید صادر کنید، آن را در دستگاه
-                بگذارید
+                کارت فعلی ثبت شده. برای تعویض، کارت جدید را روی دستگاه بگذارید
               </div>
             ) : (
-              <div className="text-emerald-600">کارت شناسایی شد </div>
+              <div className="text-emerald-600">کارت شناسایی شد</div>
             )
           ) : (
             <div className="text-red-500">کارت را در دستگاه بگذارید</div>
           )}
         </div>
 
-        {/* Sessions Counter */}
         <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-4">
           <span className="text-slate-700 font-medium">تعداد جلسات</span>
 
@@ -277,14 +308,12 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
           </div>
         </div>
 
-        {/* Weekly calendar */}
         <WeeklyCalendar
           records={records}
           currentUserId={user?.id}
           onAddEvent={handleAddOrRemoveRecord}
         />
 
-        {/* Buttons */}
         <div className="flex justify-end gap-4 pt-4">
           <button
             type="button"
@@ -296,9 +325,10 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
 
           <button
             type="submit"
-            className="px-6 py-2.5 rounded-xl text-white bg-linear-to-r from-sky-500 to-indigo-600 shadow-md hover:shadow-lg transition"
+            disabled={saving}
+            className="px-6 py-2.5 rounded-xl text-white bg-linear-to-r from-sky-500 to-indigo-600 shadow-md hover:shadow-lg transition disabled:opacity-60"
           >
-            ذخیره
+            {saving ? "در حال ذخیره..." : "ذخیره"}
           </button>
         </div>
       </form>

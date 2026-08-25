@@ -36,6 +36,7 @@ export default function Sidebar() {
           <li key={item.path}>
             <NavLink
               to={item.path}
+              end={item.path === "/"}
               className={({ isActive }) =>
                 `flex items-center p-2 rounded-lg cursor-pointer transition ${
                   isActive ? "bg-gray-700" : "hover:bg-gray-800"

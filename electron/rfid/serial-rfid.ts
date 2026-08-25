@@ -1,10 +1,8 @@
-// src/rfid/serial-rfid.ts
-
 import { SerialPort, SerialPortOpenOptions } from "serialport";
 
 export interface SerialRFIDOpenOptions {
   baudRate?: number;
-  reconnectDelay?: number; // میلی‌ثانیه تا تلاش بعدی برای reconnect
+  reconnectDelay?: number;
 }
 
 export type LineCallback = (line: string) => void;
@@ -25,22 +23,28 @@ export class SerialRFID {
   private options: SerialRFIDOpenOptions = {};
   private reconnecting = false;
 
-  constructor() {}
+  public isOpen() {
+    return Boolean(this.port?.isOpen);
+  }
 
   public static async listPorts() {
     return await SerialPort.list();
   }
 
-  // باز کردن پورت و فعال کردن auto-reconnect
   public async open(path: string, options: SerialRFIDOpenOptions = {}) {
     this.path = path;
     this.options = options;
-
     await this._openPort();
   }
 
   private async _openPort(): Promise<void> {
     if (!this.path) throw new Error("Serial port path not set");
+
+    if (this.port?.isOpen) {
+      await new Promise<void>((resolve) => {
+        this.port!.close(() => resolve());
+      });
+    }
 
     const portOptions: SerialPortOpenOptions<any> = {
       path: this.path,
@@ -54,22 +58,29 @@ export class SerialRFID {
 
     this.port = new SerialPort(portOptions);
 
-    this.port.open((err) => {
-      if (err) {
-        console.error("❌ Failed to open port:", err);
-        this._scheduleReconnect();
-        return;
-      }
+    return new Promise((resolve, reject) => {
+      this.port!.open((err) => {
+        if (err) {
+          console.error("Failed to open port:", err);
+          this._scheduleReconnect();
+          reject(err);
+          return;
+        }
 
-      try {
-        this.port!.set({ dtr: true });
-      } catch {}
+        try {
+          this.port!.set({ dtr: true });
+        } catch {}
 
-      this.port!.on("data", (data: Buffer) => this._handleData(data));
-      this.port!.on("error", (err) => this._handleError(err));
-      this.port!.on("close", () => this._handleClose());
-      if (this._onReconnect) this._onReconnect("online");
-      console.log("✅ RFID connected to", this.path);
+        this.port!.removeAllListeners("data");
+        this.port!.removeAllListeners("error");
+        this.port!.removeAllListeners("close");
+        this.port!.on("data", (data: Buffer) => this._handleData(data));
+        this.port!.on("error", (err) => this._handleError(err));
+        this.port!.on("close", () => this._handleClose());
+        this._onReconnect?.("online");
+        console.log("RFID connected to", this.path);
+        resolve();
+      });
     });
   }
 
@@ -77,9 +88,9 @@ export class SerialRFID {
     const text = data.toString("utf8");
     this.buffer += text;
 
-    let line;
+    let line: string | null;
     while ((line = this._extractLine()) !== null) {
-      if (this._onLine) this._onLine(line);
+      this._onLine?.(line);
     }
   }
 
@@ -109,14 +120,14 @@ export class SerialRFID {
   }
 
   private _handleError(err: Error) {
-    if (this._onError) this._onError(err);
-    console.error("⚠ Serial port error:", err);
+    this._onError?.(err);
+    console.error("Serial port error:", err);
     this._scheduleReconnect();
   }
 
   private _handleClose() {
-    if (this._onClose) this._onClose?.();
-    console.warn("⚠ Serial port closed");
+    this._onClose?.();
+    console.warn("Serial port closed");
     this._scheduleReconnect();
   }
 
@@ -125,26 +136,24 @@ export class SerialRFID {
     this.reconnecting = true;
 
     const delay = this.options.reconnectDelay ?? 1500;
-    console.log(`⏱ Reconnecting in ${delay}ms...`);
+    console.log(`Reconnecting RFID in ${delay}ms...`);
 
     setTimeout(async () => {
       this.reconnecting = false;
 
       try {
-        // بررسی اینکه COM هنوز وصل است
         const ports = await SerialRFID.listPorts();
         const found = ports.find((p) => p.path === this.path);
         if (!found) {
-          console.warn("⚠ Device not found, waiting for next retry");
+          this._onReconnect?.("offline");
           this._scheduleReconnect();
           return;
         }
 
-        console.log("🔄 Reconnecting to", this.path);
         await this._openPort();
       } catch (e) {
-        console.error("❌ Reconnect failed:", e);
-        if (this._onReconnect) this._onReconnect("offline");
+        console.error("RFID reconnect failed:", e);
+        this._onReconnect?.("offline");
         this._scheduleReconnect();
       }
     }, delay);

@@ -1,19 +1,19 @@
-// src/database/index.ts
 import path from "path";
 import { app } from "electron";
 import Database from "better-sqlite3";
 import dotenv from "dotenv";
+import { runMigrations } from "./migrate";
 
 dotenv.config();
 
-const dbPath = path.join(app.getPath("userData"), "database.sqlite");
-
-export const db = new Database(dbPath);
-
-db.pragma("foreign_keys = ON");
-
-import { runMigrations } from "./migrate";
+export let db!: Database.Database;
 
 export function initDatabase() {
+  if (db) return;
+
+  const dbPath = path.join(app.getPath("userData"), "database.sqlite");
+  db = new Database(dbPath);
+  db.pragma("journal_mode = WAL");
+  db.pragma("foreign_keys = ON");
   runMigrations();
 }

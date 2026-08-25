@@ -10,7 +10,7 @@ export function registerCalendarHandlers() {
       start: string | Date,
       end: string | Date
     ): Promise<SessionResult[]> => {
-      return await SessionModel.findAll(start, end);
+      return SessionModel.findAll(start, end);
     }
   );
 }

@@ -6,7 +6,7 @@ export default function ConfirmDelete({
   onCancel: () => void;
 }) {
   return (
-    <div className="space-y-4 text-center">
+    <div className="relative bg-white rounded-2xl p-6 max-w-md w-[28rem] shadow-xl space-y-4 text-center">
       <h2 className="text-lg font-semibold text-red-600">حذف کاربر</h2>
       <p className="text-slate-600">
         آیا از حذف این کاربر مطمئن هستید؟ این عملیات قابل بازگشت نیست.

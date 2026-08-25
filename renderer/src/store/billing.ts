@@ -11,28 +11,28 @@ interface BillingStore {
   revenueData: RevenueByMonthItem[];
   sessionStats: SessionStats | null;
   logs: BillingLogItem[];
-
   loadData: () => Promise<void>;
 }
 
-export const useBillingStore = create<BillingStore>((set, get) => ({
+export const useBillingStore = create<BillingStore>((set) => ({
   summary: null,
   revenueData: [],
   sessionStats: null,
   logs: [],
 
   loadData: async () => {
-    const summary = await window.electronAPI?.billingGetSummary();
-    const revenueData = await window.electronAPI?.billingGetRevenueByMonth();
-    const sessionStats = await window.electronAPI?.billingGetSessionStats();
-    const logs = await window.electronAPI?.billingGetRecentLogs();
-    if (summary && revenueData && sessionStats && logs) {
-      set({
-        summary,
-        revenueData,
-        sessionStats,
-        logs,
-      });
-    }
+    const [summary, revenueData, sessionStats, logs] = await Promise.all([
+      window.electronAPI?.billingGetSummary(),
+      window.electronAPI?.billingGetRevenueByMonth(),
+      window.electronAPI?.billingGetSessionStats(),
+      window.electronAPI?.billingGetRecentLogs(),
+    ]);
+
+    set({
+      summary: summary ?? null,
+      revenueData: revenueData ?? [],
+      sessionStats: sessionStats ?? { used: 0, remaining: 0 },
+      logs: logs ?? [],
+    });
   },
 }));

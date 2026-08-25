@@ -42,9 +42,8 @@ const UsersList: React.FC<UsersListProps> = ({ isLoading, users }) => {
             </tr>
           )}
 
-          {users.map((u) => (
-            <UserItem user={u} key={u.id} />
-          ))}
+          {!isLoading &&
+            users.map((u) => <UserItem user={u} key={u.id} />)}
         </tbody>
       </table>
       <Pagination page={page} totalPages={totalPages} onChange={setPage} />
