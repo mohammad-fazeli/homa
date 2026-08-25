@@ -1,4 +1,4 @@
-import { db } from "../";
+import { db } from "../connection";
 
 export const SessionLogModel = {
   create(data: {

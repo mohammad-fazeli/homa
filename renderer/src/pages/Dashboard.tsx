@@ -43,6 +43,7 @@ export default function Dashboard() {
           icon={<CreditCard className="text-emerald-500" />}
         />
 
+        <Link to="/settings">
         <Card className="rounded-2xl shadow-lg border border-slate-100">
           <CardContent className="p-6 flex items-center justify-between">
             <div>
@@ -62,6 +63,7 @@ export default function Dashboard() {
             )}
           </CardContent>
         </Card>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -72,7 +74,7 @@ export default function Dashboard() {
           <Plus size={16} /> مشاهده کاربران
         </Link>
         <Link
-          to="/user/new"
+          to="/users/new"
           className="inline-flex items-center gap-2 bg-linear-to-r from-sky-500 to-indigo-600 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg cursor-pointer"
         >
           <Plus size={16} /> ساخت کاربر جدید

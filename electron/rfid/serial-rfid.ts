@@ -22,6 +22,7 @@ export class SerialRFID {
   private path: string | null = null;
   private options: SerialRFIDOpenOptions = {};
   private reconnecting = false;
+  private stopped = false;
 
   public isOpen() {
     return Boolean(this.port?.isOpen);
@@ -32,6 +33,7 @@ export class SerialRFID {
   }
 
   public async open(path: string, options: SerialRFIDOpenOptions = {}) {
+    this.stopped = false;
     this.path = path;
     this.options = options;
     await this._openPort();
@@ -132,7 +134,7 @@ export class SerialRFID {
   }
 
   private _scheduleReconnect() {
-    if (this.reconnecting) return;
+    if (this.stopped || this.reconnecting) return;
     this.reconnecting = true;
 
     const delay = this.options.reconnectDelay ?? 1500;
@@ -140,6 +142,7 @@ export class SerialRFID {
 
     setTimeout(async () => {
       this.reconnecting = false;
+      if (this.stopped) return;
 
       try {
         const ports = await SerialRFID.listPorts();
@@ -189,6 +192,7 @@ export class SerialRFID {
   }
 
   public close() {
+    this.stopped = true;
     if (this.port && this.port.isOpen) {
       this.port.close();
     }

@@ -14,6 +14,12 @@ export default function WindowControls() {
       "
         style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
       >
+        <div
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-700"
+          dir="rtl"
+        >
+          هما
+        </div>
         {/* Minimize */}
         <button
           onClick={() => window.electronAPI?.minimize()}

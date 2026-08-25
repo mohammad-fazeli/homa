@@ -1,31 +1,36 @@
 {
   "name": "homa",
   "version": "1.0.0",
-  "main": "dist-electron/main.js",
+  "main": "dist-electron/electron/main.js",
+  "description": "نرم‌افزار دسکتاپ مدیریت مشتریان، جلسات و مالی",
+  "author": "Homa",
   "type": "commonjs",
   "scripts": {
     "dev": "concurrently \"npm run dev:renderer\" \"npm run dev:electron\"",
     "dev:renderer": "cd renderer && vite",
     "dev:electron": "wait-on http://localhost:5173 && npm run electron:start",
-    "electron:start": "tsc -p electron && electron dist-electron/main.js",
+    "electron:start": "tsc -p electron && electron dist-electron/electron/main.js",
     "build:renderer": "cd renderer && vite build",
     "build:electron": "tsc -p electron",
     "build": "npm run build:renderer && npm run build:electron",
     "dist": "npm run build && electron-builder",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "lint": "tsc -p electron --noEmit && tsc -p renderer --noEmit && eslint .",
+    "test": "vitest run"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.17",
+    "@fontsource/vazirmatn": "^5.2.8",
     "better-sqlite3": "^12.5.0",
     "dotenv": "^17.2.3",
     "framer-motion": "^12.23.24",
     "lucide-react": "^0.554.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.10.1",
+    "react-router-dom": "^7.11.0",
     "react-toastify": "^11.0.5",
     "recharts": "^3.5.1",
     "serialport": "^13.0.0",
@@ -42,6 +47,9 @@
     "concurrently": "^9.2.1",
     "electron": "^32.0.1",
     "electron-builder": "^24.13.3",
+    "eslint": "^9.17.0",
+    "typescript-eslint": "^8.18.0",
+    "vitest": "^2.1.8",
     "postcss": "^8.5.6",
     "typescript": "^5.5.4",
     "vite": "^5.4.1",
@@ -61,7 +69,7 @@
       "package.json"
     ],
     "extraMetadata": {
-      "main": "dist-electron/main.js"
+      "main": "dist-electron/electron/main.js"
     },
     "asarUnpack": [
       "node_modules/better-sqlite3/**/*",
@@ -69,10 +77,21 @@
       "node_modules/@serialport/**/*"
     ],
     "win": {
+      "icon": "build/icon.png",
       "signAndEditExecutable": false,
       "target": [
         "nsis"
       ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "هما",
+      "uninstallDisplayName": "هما",
+      "artifactName": "Homa-Setup-${version}.${ext}"
     }
   }
 }

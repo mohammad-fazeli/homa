@@ -1,5 +1,5 @@
-import { db } from "../";
-import { CourseCreateInput, CourseResult, CourseUpdateInput } from "../types";
+import { db } from "../connection";
+import { CourseCreateInput, CourseResult } from "../types";
 
 function mapCourse(row: any): CourseResult {
   return {

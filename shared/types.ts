@@ -7,9 +7,9 @@ export interface UserAttributes {
   uidCart: string;
 }
 
-export interface UserCreateInput extends Omit<UserAttributes, "id"> {}
+export type UserCreateInput = Omit<UserAttributes, "id">;
 
-export interface UserUpdateInput extends UserAttributes {}
+export type UserUpdateInput = UserAttributes;
 
 export interface CourseAttributes {
   id: number;
@@ -20,12 +20,14 @@ export interface CourseAttributes {
   updatedAt?: Date;
 }
 
-export interface CourseCreateInput
-  extends Omit<CourseAttributes, "id" | "createdAt" | "updatedAt"> {}
+export type CourseCreateInput = Omit<
+  CourseAttributes,
+  "id" | "createdAt" | "updatedAt"
+>;
 
 export type CourseResult = CourseAttributes;
 
-export interface CourseUpdateInput extends CourseAttributes {}
+export type CourseUpdateInput = CourseAttributes;
 
 export interface SessionAttributes {
   id: number;
@@ -37,10 +39,12 @@ export interface SessionAttributes {
   updatedAt?: Date;
 }
 
-export interface SessionCreateInput
-  extends Omit<SessionAttributes, "id" | "createdAt" | "updatedAt"> {}
+export type SessionCreateInput = Omit<
+  SessionAttributes,
+  "id" | "createdAt" | "updatedAt"
+>;
 
-export interface SessionUpdateInput extends SessionAttributes {}
+export type SessionUpdateInput = SessionAttributes;
 
 export type SessionResult = SessionAttributes & {
   userId: number;
@@ -84,6 +88,14 @@ export interface UserCourseSessionItem {
   usedAt: string | Date | null;
 }
 
+export interface UserCourseDetail {
+  id: number;
+  cost: number;
+  totalSessions: number;
+  createdAt?: string | Date;
+  sessions: UserCourseSessionItem[];
+}
+
 export interface UserFindByIdResult {
   id: number;
   firstName: string;
@@ -91,12 +103,30 @@ export interface UserFindByIdResult {
   phone: string;
   nationalId: string;
   uidCart: string;
-  course: {
-    id: number;
-    cost: number;
-    totalSessions: number;
-    sessions: UserCourseSessionItem[];
-  } | null;
+  course: UserCourseDetail | null;
+  courses: UserCourseDetail[];
+}
+
+export interface UseSessionResult {
+  success: boolean;
+  message: string;
+  code?:
+    | "INVALID_CARD"
+    | "NO_SESSION"
+    | "OUT_OF_TOLERANCE"
+    | "ALREADY_USED"
+    | "OK";
+  sessionId?: number;
+  userName?: string;
+}
+
+export interface RfidPortInfo {
+  path: string;
+  manufacturer?: string;
+}
+
+export interface AppSettings {
+  rfidPort?: string;
 }
 
 export interface BillingSummary {

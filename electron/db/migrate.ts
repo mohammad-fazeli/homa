@@ -1,5 +1,5 @@
 // src/database/migrate.ts
-import { db } from "./index";
+import { db } from "./connection";
 import { migrations } from "./migrations";
 
 export function runMigrations() {

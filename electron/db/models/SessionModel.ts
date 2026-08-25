@@ -1,9 +1,10 @@
-import { db } from "../";
+import { db } from "../connection";
 import {
   SessionCreateInput,
   SessionResult,
   SessionUpdateInput,
 } from "../types";
+import { hasHourConflict } from "../../lib/session-match";
 
 function mapSessionRow(row: any): SessionResult {
   return {
@@ -65,7 +66,38 @@ export const SessionModel = {
     return mapSessionRow(row);
   },
 
+  listAll(): Array<{ id: number; date: string | Date; courseId: number }> {
+    return db.prepare(`SELECT id, date, courseId FROM Sessions`).all() as Array<{
+      id: number;
+      date: string | Date;
+      courseId: number;
+    }>;
+  },
+
+  assertNoConflicts(
+    dates: Array<string | Date>,
+    excludeIds: number[] = []
+  ) {
+    const existing = this.listAll();
+    for (const date of dates) {
+      if (hasHourConflict(existing, date, excludeIds)) {
+        throw new Error("این ساعت قبلاً برای مشتری دیگری رزرو شده است");
+      }
+    }
+  },
+
   update(courseId: number, data: SessionUpdateInput[]) {
+    const existingIds = (
+      db
+        .prepare(`SELECT id FROM Sessions WHERE courseId = ?`)
+        .all(courseId) as Array<{ id: number }>
+    ).map((row) => row.id);
+
+    this.assertNoConflicts(
+      data.map((session) => session.date),
+      existingIds
+    );
+
     const sync = db.transaction(() => {
       this.deletesByCourseId(courseId);
       for (const session of data) {
@@ -90,6 +122,22 @@ export const SessionModel = {
       WHERE id = ?
     `
     ).run(usedAt, id);
+  },
+
+  findLastUnused(userId: number) {
+    const row: any = db
+      .prepare(
+        `
+        SELECT s.*
+        FROM Sessions s
+        JOIN Courses c ON s.courseId = c.id
+        WHERE c.userId = ? AND s.used = 0
+        ORDER BY s.date DESC
+        LIMIT 1
+      `
+      )
+      .get(userId);
+    return row ?? null;
   },
 
   deletesByCourseId(courseId: number) {

@@ -129,9 +129,15 @@ export default function WeeklyCalendar({
   }, [records]);
 
   const allEvents = [...storeEvents, ...recordEvents];
+  const isEmpty = allEvents.length === 0;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-lg p-4 w-full overflow-hidden">
+      {isEmpty && (
+        <p className="text-xs text-slate-500 mb-3">
+          جلسه‌ای در این هفته ثبت نشده است. برای رزرو روی یک خانهٔ ساعت کلیک کنید.
+        </p>
+      )}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <button
@@ -192,7 +198,7 @@ export default function WeeklyCalendar({
               {hour}:00
             </div>
 
-            {days.map((day, i) => {
+            {days.map((day) => {
               const cellDate = new Date(day);
               cellDate.setHours(hour, 0, 0, 0);
 

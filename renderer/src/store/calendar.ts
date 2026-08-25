@@ -15,7 +15,7 @@ export const useCalendarStore = create<CalendarStore>((set) => ({
   loadEvents: async (start: string, end: string) => {
     set({ isLoading: true });
     try {
-      const data = await window.electronAPI?.getCalender(start, end);
+      const data = await window.electronAPI?.getCalendar(start, end);
       const user = useUsersStore.getState().user;
       const currentUserId = user?.id;
 

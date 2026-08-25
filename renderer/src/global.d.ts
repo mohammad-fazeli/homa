@@ -1,50 +1,68 @@
 export * from "../../shared/types";
+import type {
+  UserCreateInput,
+  UserFindAllResult,
+  UserFindByIdResult,
+  UserUpdateInput,
+  SessionUpdateInput,
+  SessionResult,
+  BillingSummary,
+  RevenueByMonthItem,
+  SessionStats,
+  BillingLogItem,
+  DashboardStats,
+  UseSessionResult,
+  RfidPortInfo,
+} from "../../shared/types";
 
 export type RendererElectronAPI = {
   minimize: () => void;
   maximize: () => void;
   close: () => void;
   addUser: (
-    user: import("../../shared/types").UserCreateInput,
+    user: UserCreateInput,
     course?: { cost: number; sessions: number },
     sessions?: string[]
-  ) => Promise<import("../../shared/types").UserFindByIdResult>;
-  getUser: (
-    userid: number
-  ) => Promise<import("../../shared/types").UserFindByIdResult>;
+  ) => Promise<UserFindByIdResult>;
+  getUser: (userid: number) => Promise<UserFindByIdResult>;
   getUsers: (
     page: number,
     limit: number,
     search?: string
-  ) => Promise<import("../../shared/types").UserFindAllResult>;
+  ) => Promise<UserFindAllResult>;
   updateUser: (
-    user: import("../../shared/types").UserUpdateInput,
+    user: UserUpdateInput,
     course?: { cost: number; sessions: number; id: number },
-    sessions?: import("../../shared/types").SessionUpdateInput[]
-  ) => Promise<import("../../shared/types").UserFindByIdResult>;
+    sessions?: SessionUpdateInput[]
+  ) => Promise<UserFindByIdResult>;
+  saveCourse: (
+    userId: number,
+    course: { cost: number; sessions: number; id?: number },
+    sessions?: SessionUpdateInput[]
+  ) => Promise<UserFindByIdResult>;
+  deleteCourse: (courseId: number) => Promise<number>;
   deleteUser: (id: number) => Promise<number>;
-  useSession: (uidCart: string) => Promise<{
-    success: boolean;
-    message: string;
-  }>;
+  addSession: (userId: number, dateIso: string) => Promise<UserFindByIdResult>;
+  removeLastSession: (userId: number) => Promise<UserFindByIdResult>;
+  useSession: (
+    uidCart: string,
+    options?: { force?: boolean; sessionId?: number }
+  ) => Promise<UseSessionResult>;
   checkDevice: () => Promise<"online" | "offline">;
-  getCalender: (
-    start: string,
-    end: string
-  ) => Promise<import("../../shared/types").SessionResult[]>;
-  billingGetSummary: () => Promise<import("../../shared/types").BillingSummary>;
-  billingGetRevenueByMonth: () => Promise<
-    import("../../shared/types").RevenueByMonthItem[]
-  >;
-  billingGetSessionStats: () => Promise<
-    import("../../shared/types").SessionStats
-  >;
-  billingGetRecentLogs: () => Promise<
-    import("../../shared/types").BillingLogItem[]
-  >;
-  dashboardGetStats: () => Promise<
-    import("../../shared/types").DashboardStats
-  >;
+  rfidListPorts: () => Promise<RfidPortInfo[]>;
+  rfidGetPort: () => Promise<string>;
+  rfidSetPort: (
+    portPath: string
+  ) => Promise<{ ok: boolean; status: "online" | "offline" }>;
+  dbBackup: () => Promise<{ ok?: boolean; cancelled?: boolean; path?: string }>;
+  dbRestore: () => Promise<{ ok?: boolean; cancelled?: boolean }>;
+  getCalendar: (start: string, end: string) => Promise<SessionResult[]>;
+  getCalender: (start: string, end: string) => Promise<SessionResult[]>;
+  billingGetSummary: () => Promise<BillingSummary>;
+  billingGetRevenueByMonth: () => Promise<RevenueByMonthItem[]>;
+  billingGetSessionStats: () => Promise<SessionStats>;
+  billingGetRecentLogs: () => Promise<BillingLogItem[]>;
+  dashboardGetStats: () => Promise<DashboardStats>;
   ipcRenderer: {
     on: (channel: string, listener: (...args: any[]) => void) => any;
     removeListener: (channel: string, listener: any) => any;

@@ -3,10 +3,11 @@ import * as path from "path";
 import dotenv from "dotenv";
 import { registerUserHandlers } from "./ipc/users";
 import { initDatabase } from "./db";
-import { registerRfidHandlers } from "./ipc/rfid";
+import { registerRfidHandlers, registerRfidIpc } from "./ipc/rfid";
 import { registerCalendarHandlers } from "./ipc/calendar";
 import { registerBillingHandlers } from "./ipc/billing";
 import { registerDashboardHandlers } from "./ipc/dashboard";
+import { registerBackupHandlers } from "./ipc/backup";
 
 dotenv.config();
 
@@ -27,7 +28,8 @@ function registerWindowHandlers() {
   ipcMain.on("window:maximize", () => {
     const win = getMainWindow();
     if (!win) return;
-    win.isMaximized() ? win.unmaximize() : win.maximize();
+    if (win.isMaximized()) win.unmaximize();
+    else win.maximize();
   });
   ipcMain.on("window:close", () => getMainWindow()?.close());
 }
@@ -40,6 +42,7 @@ function createWindow() {
     minHeight: 640,
     frame: false,
     show: false,
+    title: "هما",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -57,7 +60,7 @@ function createWindow() {
     win.loadURL("http://localhost:5173");
     win.webContents.openDevTools({ mode: "detach" });
   } else {
-    win.loadFile(path.join(__dirname, "../renderer/dist/index.html"));
+    win.loadFile(path.join(__dirname, "../../renderer/dist/index.html"));
     win.removeMenu();
     win.webContents.on("devtools-opened", () => {
       win.webContents.closeDevTools();
@@ -83,6 +86,8 @@ app.whenReady().then(() => {
   registerCalendarHandlers();
   registerBillingHandlers();
   registerDashboardHandlers();
+  registerRfidIpc();
+  registerBackupHandlers();
   createWindow();
 });
 

@@ -1,4 +1,4 @@
-import { db } from "../";
+import { db } from "../connection";
 import {
   UserCreateInput,
   UserUpdateInput,
@@ -6,10 +6,44 @@ import {
   UserFindAllResult,
   UserFindByIdResult,
   UserCourseSummary,
+  UserCourseDetail,
 } from "../types";
 import { mapSqliteError } from "../../lib/utils";
 
-function mapUserWithCourse(user: any, course: any, sessions: any[]) {
+function mapSessions(sessions: any[]) {
+  return sessions.map((s: any) => ({
+    id: s.id,
+    date: s.date,
+    used: s.used as 0 | 1,
+    usedAt: s.usedAt,
+  }));
+}
+
+function mapCourseDetail(course: any, sessions: any[]): UserCourseDetail {
+  return {
+    id: course.id,
+    cost: course.cost,
+    totalSessions: course.sessions,
+    createdAt: course.createdAt,
+    sessions: mapSessions(sessions),
+  };
+}
+
+function loadCourses(userId: number): UserCourseDetail[] {
+  const courses = db
+    .prepare(`SELECT * FROM Courses WHERE userId = ? ORDER BY id DESC`)
+    .all(userId) as any[];
+
+  return courses.map((course) => {
+    const sessions = db
+      .prepare(`SELECT * FROM Sessions WHERE courseId = ? ORDER BY date ASC`)
+      .all(course.id);
+    return mapCourseDetail(course, sessions);
+  });
+}
+
+function mapUser(user: any): UserFindByIdResult {
+  const courses = loadCourses(user.id);
   return {
     id: user.id,
     firstName: user.firstName,
@@ -17,19 +51,8 @@ function mapUserWithCourse(user: any, course: any, sessions: any[]) {
     phone: user.phone,
     nationalId: user.nationalId,
     uidCart: user.uidCart,
-    course: course
-      ? {
-          id: course.id,
-          cost: course.cost,
-          totalSessions: course.sessions,
-          sessions: sessions.map((s: any) => ({
-            id: s.id,
-            date: s.date,
-            used: s.used,
-            usedAt: s.usedAt,
-          })),
-        }
-      : null,
+    course: courses[0] ?? null,
+    courses,
   };
 }
 
@@ -84,49 +107,46 @@ export const UserModel = {
       : usersStmt.all(limit, offset);
 
     const data: UserFindAllItem[] = (users as any[]).map((u) => {
-      const course: any = db
+      const stats: any = db
         .prepare(
           `
-        SELECT id, userId, cost, sessions
-        FROM Courses
-        WHERE userId = ?
-        ORDER BY id DESC
-        LIMIT 1
-      `
+          SELECT
+            COALESCE(SUM(sessions), 0) as totalSessions,
+            MAX(id) as latestCourseId
+          FROM Courses
+          WHERE userId = ?
+        `
         )
         .get(u.id);
 
-      let courseSummary: UserCourseSummary = {
-        id: 0,
-        userId: u.id,
-        cost: 0,
-        totalSessions: 0,
-        nextSessionDate: null,
-      };
+      const latest: any = stats?.latestCourseId
+        ? db
+            .prepare(`SELECT id, userId, cost, sessions FROM Courses WHERE id = ?`)
+            .get(stats.latestCourseId)
+        : null;
 
-      if (course) {
-        const nextSession: any = db
-          .prepare(
-            `
-          SELECT date
-          FROM Sessions
-          WHERE courseId = ?
-            AND used = 0
-            AND datetime(date) >= datetime('now')
-          ORDER BY date ASC
+      const nextSession: any = db
+        .prepare(
+          `
+          SELECT s.date
+          FROM Sessions s
+          JOIN Courses c ON s.courseId = c.id
+          WHERE c.userId = ?
+            AND s.used = 0
+            AND datetime(s.date) >= datetime('now')
+          ORDER BY s.date ASC
           LIMIT 1
         `
-          )
-          .get(course.id);
+        )
+        .get(u.id);
 
-        courseSummary = {
-          id: course.id,
-          userId: course.userId,
-          cost: course.cost,
-          totalSessions: course.sessions,
-          nextSessionDate: nextSession?.date ?? null,
-        };
-      }
+      const courseSummary: UserCourseSummary = {
+        id: latest?.id ?? 0,
+        userId: u.id,
+        cost: latest?.cost ?? 0,
+        totalSessions: stats?.totalSessions ?? 0,
+        nextSessionDate: nextSession?.date ?? null,
+      };
 
       return {
         id: u.id,
@@ -149,68 +169,14 @@ export const UserModel = {
 
   findById(id: number): UserFindByIdResult | null {
     const user: any = db.prepare(`SELECT * FROM Users WHERE id = ?`).get(id);
-    if (!user) return null;
-
-    const course: any = db
-      .prepare(
-        `
-        SELECT * FROM Courses
-        WHERE userId = ?
-        ORDER BY id DESC
-        LIMIT 1
-      `
-      )
-      .get(id);
-
-    if (!course) {
-      return mapUserWithCourse(user, null, []);
-    }
-
-    const sessions = db
-      .prepare(
-        `
-        SELECT * FROM Sessions
-        WHERE courseId = ?
-        ORDER BY date ASC
-      `
-      )
-      .all(course.id);
-
-    return mapUserWithCourse(user, course, sessions);
+    return user ? mapUser(user) : null;
   },
 
   findByUidCart(uidCart: string): UserFindByIdResult | null {
     const user: any = db
       .prepare(`SELECT * FROM Users WHERE uidCart = ?`)
       .get(uidCart);
-    if (!user) return null;
-
-    const course: any = db
-      .prepare(
-        `
-        SELECT * FROM Courses
-        WHERE userId = ?
-        ORDER BY id DESC
-        LIMIT 1
-      `
-      )
-      .get(user.id);
-
-    if (!course) {
-      return mapUserWithCourse(user, null, []);
-    }
-
-    const sessions = db
-      .prepare(
-        `
-        SELECT * FROM Sessions
-        WHERE courseId = ?
-        ORDER BY date ASC
-      `
-      )
-      .all(course.id);
-
-    return mapUserWithCourse(user, course, sessions);
+    return user ? mapUser(user) : null;
   },
 
   create(data: UserCreateInput) {

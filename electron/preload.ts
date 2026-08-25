@@ -33,9 +33,31 @@ contextBridge.exposeInMainWorld("electronAPI", {
     course?: { cost: number; sessions: number; id: number },
     sessions?: SessionUpdateInput[]
   ) => ipcRenderer.invoke("update-user", user, course, sessions),
+  saveCourse: (
+    userId: number,
+    course: { cost: number; sessions: number; id?: number },
+    sessions?: SessionUpdateInput[]
+  ) => ipcRenderer.invoke("save-course", userId, course, sessions),
+  deleteCourse: (courseId: number) =>
+    ipcRenderer.invoke("delete-course", courseId),
   deleteUser: (userId: number) => ipcRenderer.invoke("delete-user", userId),
-  useSession: (uidCart: string) => ipcRenderer.invoke("use-session", uidCart),
+  addSession: (userId: number, dateIso: string) =>
+    ipcRenderer.invoke("add-session", userId, dateIso),
+  removeLastSession: (userId: number) =>
+    ipcRenderer.invoke("remove-last-session", userId),
+  useSession: (
+    uidCart: string,
+    options?: { force?: boolean; sessionId?: number }
+  ) => ipcRenderer.invoke("use-session", uidCart, options),
   checkDevice: () => ipcRenderer.invoke("check-device"),
+  rfidListPorts: () => ipcRenderer.invoke("rfid:listPorts"),
+  rfidGetPort: () => ipcRenderer.invoke("rfid:getPort"),
+  rfidSetPort: (portPath: string) =>
+    ipcRenderer.invoke("rfid:setPort", portPath),
+  dbBackup: () => ipcRenderer.invoke("db:backup"),
+  dbRestore: () => ipcRenderer.invoke("db:restore"),
+  getCalendar: (start: string | Date, end: string | Date) =>
+    ipcRenderer.invoke("get-calendar", start, end),
   getCalender: (start: string | Date, end: string | Date) =>
     ipcRenderer.invoke("get-calender", start, end),
   billingGetSummary: () => ipcRenderer.invoke("billing:getSummary"),

@@ -1,8 +1,9 @@
 import React from "react";
-import { Edit2, Trash2, User } from "lucide-react";
+import { Edit2, Eye, MinusCircle, PlusCircle, Trash2, User } from "lucide-react";
 import { useUsersStore } from "../store/users";
 import { useNavigate } from "react-router-dom";
 import { UserFindAllItem } from "../global";
+import { toast } from "react-toastify";
 
 interface UserItemProps {
   user: UserFindAllItem;
@@ -10,7 +11,8 @@ interface UserItemProps {
 
 const UserItem: React.FC<UserItemProps> = ({ user }) => {
   const navigate = useNavigate();
-  const { setDeleteUserId } = useUsersStore();
+  const { setDeleteUserId, setViewUserId, setPickSessionUserId, removeLastSession } =
+    useUsersStore();
 
   return (
     <tr className="hover:bg-slate-50 transition-colors">
@@ -27,7 +29,6 @@ const UserItem: React.FC<UserItemProps> = ({ user }) => {
           </div>
         </div>
       </td>
-
       <td className="px-6 py-4 hidden md:table-cell text-slate-600 text-center">
         {user.phone}
       </td>
@@ -36,26 +37,54 @@ const UserItem: React.FC<UserItemProps> = ({ user }) => {
           ? new Date(user.course.nextSessionDate).toLocaleString("fa-IR")
           : "ندارد"}
       </td>
-
-      <td className="px-6 py-4 text-center">
-        <div className="inline-flex px-3 py-1 rounded-md bg-slate-100 font-medium">
-          {user.course?.totalSessions || 0}
-        </div>
-      </td>
-
       <td className="px-6 py-4 text-center">
         <div className="inline-flex items-center gap-2">
           <button
+            onClick={async () => {
+              try {
+                await removeLastSession(user.id);
+              } catch (err) {
+                toast.error(
+                  err instanceof Error ? err.message : "حذف جلسه ناموفق بود"
+                );
+              }
+            }}
+            className="p-1 rounded-md hover:bg-slate-100"
+            title="حذف آخرین جلسه استفاده‌نشده"
+          >
+            <MinusCircle size={20} />
+          </button>
+          <div className="px-3 py-1 rounded-md bg-slate-100 font-medium">
+            {user.course?.totalSessions || 0}
+          </div>
+          <button
+            onClick={() => setPickSessionUserId(user.id)}
+            className="p-1 rounded-md hover:bg-slate-100"
+            title="افزودن جلسه"
+          >
+            <PlusCircle size={20} />
+          </button>
+        </div>
+      </td>
+      <td className="px-6 py-4 text-center">
+        <div className="inline-flex items-center gap-2">
+          <button
+            onClick={() => setViewUserId(user.id)}
+            className="px-3 py-2.5 rounded-md border border-slate-200"
+            title="مشاهده"
+          >
+            <Eye size={14} />
+          </button>
+          <button
             onClick={() => navigate(`/users/edit/${user.id}`)}
-            className="px-3 py-2.5 rounded-md border border-slate-200 hover:shadow-sm cursor-pointer"
+            className="px-3 py-2.5 rounded-md border border-slate-200"
             title="ویرایش"
           >
             <Edit2 size={14} />
           </button>
-
           <button
             onClick={() => setDeleteUserId(user.id)}
-            className="px-3 py-2.5 rounded-md border border-red-100 text-red-600 hover:bg-red-50 cursor-pointer"
+            className="px-3 py-2.5 rounded-md border border-red-100 text-red-600"
             title="حذف"
           >
             <Trash2 size={14} />
