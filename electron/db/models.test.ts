@@ -80,5 +80,35 @@ describe.skipIf(!sqliteAvailable())("sqlite models", () => {
       .prepare(`SELECT used FROM Sessions WHERE id = ?`)
       .get(session.id) as { used: number };
     expect(used.used).toBe(1);
+    SessionModel.unuseSession(session.id);
+    const unused = db
+      .prepare(`SELECT used, usedAt FROM Sessions WHERE id = ?`)
+      .get(session.id) as { used: number; usedAt: string | null };
+    expect(unused.used).toBe(0);
+    expect(unused.usedAt).toBeNull();
+  });
+
+  it("filters users without a card", () => {
+    UserModel.create({
+      firstName: "با",
+      lastName: "کارت",
+      phone: "09124444444",
+      nationalId: "5555555555",
+      uidCart: "CARD123456",
+    });
+    UserModel.create({
+      firstName: "بی",
+      lastName: "کارت",
+      phone: "09125555555",
+      nationalId: "6666666666",
+      uidCart: "",
+    });
+    const none = UserModel.findAll(1, 10, "", "no_card");
+    expect(none.data.some((u) => u.lastName === "کارت" && !u.hasCard)).toBe(
+      true
+    );
+    expect(none.data.every((u) => !u.hasCard)).toBe(true);
+    const byUid = UserModel.findAll(1, 10, "CARD123456");
+    expect(byUid.data[0]?.firstName).toBe("با");
   });
 });

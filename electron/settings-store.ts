@@ -17,7 +17,13 @@ export function readSettings(): AppSettings {
 }
 
 export function writeSettings(partial: AppSettings): AppSettings {
-  const next = { ...readSettings(), ...partial };
+  const next: AppSettings = { ...readSettings() };
+  (Object.keys(partial) as Array<keyof AppSettings>).forEach((key) => {
+    const value = partial[key];
+    if (value !== undefined) {
+      (next as Record<string, unknown>)[key] = value;
+    }
+  });
   fs.writeFileSync(settingsPath(), JSON.stringify(next, null, 2), "utf8");
   return next;
 }

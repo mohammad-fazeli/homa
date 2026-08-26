@@ -2,8 +2,10 @@ import { ipcMain } from "electron";
 import {
   SessionUpdateInput,
   UserCreateInput,
+  UserFilterCounts,
   UserFindAllResult,
   UserFindByIdResult,
+  UserListFilter,
   UserUpdateInput,
   UseSessionResult,
 } from "../db/types";
@@ -19,6 +21,59 @@ import {
   normalizePhone,
 } from "../../shared/validation";
 import { resolveRfidSession } from "../lib/session-match";
+import { readSettings } from "../settings-store";
+
+function countsForUser(
+  user: UserFindByIdResult,
+  extraUsedId?: number,
+  extraUnusedId?: number
+) {
+  const totalSessions = user.courses.reduce(
+    (sum, course) => sum + course.totalSessions,
+    0
+  );
+  const usedSessions = user.courses.reduce(
+    (sum, course) =>
+      sum +
+      course.sessions.filter((session) => {
+        if (session.id === extraUsedId) return true;
+        if (session.id === extraUnusedId) return false;
+        return session.used === 1;
+      }).length,
+    0
+  );
+  return {
+    totalSessions,
+    remainingSessions: Math.max(0, totalSessions - usedSessions),
+  };
+}
+
+function resultForSession(
+  sessionId: number,
+  code: UseSessionResult["code"],
+  message: string,
+  success: boolean,
+  extraUsedId?: number,
+  extraUnusedId?: number
+): UseSessionResult {
+  const session = SessionModel.findById(sessionId);
+  if (!session) {
+    return { success: false, message: "جلسه پیدا نشد", code: "NO_SESSION" };
+  }
+  const user = UserModel.findById(session.userId);
+  if (!user) {
+    return { success: false, message: "کاربر یافت نشد", code: "NO_SESSION" };
+  }
+  const userName = `${user.firstName} ${user.lastName}`;
+  return {
+    success,
+    message,
+    code,
+    sessionId,
+    userName,
+    ...countsForUser(user, extraUsedId, extraUnusedId),
+  };
+}
 
 function validateUserInput(user: { phone: string; nationalId: string }) {
   if (!isValidPhone(user.phone)) {
@@ -127,9 +182,20 @@ export function registerUserHandlers() {
 
   ipcMain.handle(
     "get-users",
-    (_event, page: number, limit: number, search = ""): UserFindAllResult => {
-      return UserModel.findAll(page, limit, search);
+    (
+      _event,
+      page: number,
+      limit: number,
+      search = "",
+      filter: UserListFilter = "all"
+    ): UserFindAllResult => {
+      return UserModel.findAll(page, limit, search, filter);
     }
+  );
+
+  ipcMain.handle(
+    "get-user-filter-counts",
+    (): UserFilterCounts => UserModel.filterCounts()
   );
 
   ipcMain.handle(
@@ -238,15 +304,21 @@ export function registerUserHandlers() {
       }
 
       const sessions = user.courses.flatMap((course) => course.sessions);
-      const match = resolveRfidSession(sessions, new Date(), options);
+      const toleranceMinutes = readSettings().attendanceToleranceMinutes ?? 20;
+      const match = resolveRfidSession(sessions, new Date(), {
+        ...options,
+        toleranceMinutes,
+      });
       const userName = `${user.firstName} ${user.lastName}`;
+      const counts = (extraUsedId?: number) => countsForUser(user, extraUsedId);
 
       if (match.status === "none") {
         return {
           success: false,
-          message: "جلسه‌ای وجود ندارد",
+          message: "جلسه‌ای برای این کارت وجود ندارد",
           code: "NO_SESSION",
           userName,
+          ...counts(),
         };
       }
 
@@ -257,16 +329,19 @@ export function registerUserHandlers() {
           code: "ALREADY_USED",
           sessionId: match.session.id,
           userName,
+          ...counts(),
         };
       }
 
       if (match.status === "out_of_tolerance") {
+        const windowMin = toleranceMinutes ?? 20;
         return {
           success: false,
-          message: `جلسه‌ای در بازه ۲۰ دقیقه نیست. ثبت دستی حضور ${userName}؟`,
+          message: `جلسه‌ای در بازه ${windowMin.toLocaleString("fa-IR")} دقیقه نیست. ثبت دستی حضور ${userName}؟`,
           code: "OUT_OF_TOLERANCE",
           sessionId: match.session.id,
           userName,
+          ...counts(),
         };
       }
 
@@ -277,7 +352,58 @@ export function registerUserHandlers() {
         code: "OK",
         sessionId: match.session.id,
         userName,
+        ...counts(match.session.id),
       };
+    }
+  );
+
+  ipcMain.handle("mark-session", (_event, sessionId: number): UseSessionResult => {
+    const session = SessionModel.findById(sessionId);
+    if (!session) {
+      return { success: false, message: "جلسه پیدا نشد", code: "NO_SESSION" };
+    }
+    if (session.used === 1) {
+      return resultForSession(
+        sessionId,
+        "ALREADY_USED",
+        "این جلسه قبلاً ثبت شده است.",
+        true
+      );
+    }
+    SessionModel.useSession(sessionId, new Date().toISOString());
+    return resultForSession(
+      sessionId,
+      "OK",
+      `حضور ${session.title} ثبت شد`,
+      true,
+      sessionId
+    );
+  });
+
+  ipcMain.handle(
+    "unmark-session",
+    (_event, sessionId: number): UseSessionResult => {
+      const session = SessionModel.findById(sessionId);
+      if (!session) {
+        return { success: false, message: "جلسه پیدا نشد", code: "NO_SESSION" };
+      }
+      if (session.used === 0) {
+        return resultForSession(
+          sessionId,
+          "OK",
+          "این جلسه هنوز ثبت نشده است.",
+          true
+        );
+      }
+      SessionModel.unuseSession(sessionId);
+      return resultForSession(
+        sessionId,
+        "UNMARKED",
+        `حضور ${session.title} لغو شد`,
+        true,
+        undefined,
+        sessionId
+      );
     }
   );
 }

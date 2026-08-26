@@ -5,16 +5,11 @@ import { useEffect } from "react";
 
 export default function CreateUser() {
   const navigate = useNavigate();
-
   const { setEditingUser } = useUsersStore();
 
   useEffect(() => {
     setEditingUser(false);
-  }, []);
+  }, [setEditingUser]);
 
-  return (
-    <div className="p-6">
-      <UserForm onCancel={() => navigate("/users")} />
-    </div>
-  );
+  return <UserForm onCancel={() => navigate("/users")} />;
 }

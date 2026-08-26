@@ -2,7 +2,9 @@ import { contextBridge, ipcRenderer, IpcRendererEvent } from "electron";
 import type {
   SessionUpdateInput,
   UserCreateInput,
+  UserListFilter,
   UserUpdateInput,
+  AppSettings,
 } from "./db/types";
 
 const RFID_CHANNELS = new Set([
@@ -20,8 +22,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
   minimize: () => ipcRenderer.send("window:minimize"),
   maximize: () => ipcRenderer.send("window:maximize"),
   close: () => ipcRenderer.send("window:close"),
-  getUsers: (page: number = 1, limit: number = 10, search: string = "") =>
-    ipcRenderer.invoke("get-users", page, limit, search),
+  getUsers: (
+    page: number = 1,
+    limit: number = 10,
+    search: string = "",
+    filter: UserListFilter = "all"
+  ) => ipcRenderer.invoke("get-users", page, limit, search, filter),
+  getUserFilterCounts: () => ipcRenderer.invoke("get-user-filter-counts"),
   getUser: (userId: number) => ipcRenderer.invoke("get-user", userId),
   addUser: (
     user: UserCreateInput,
@@ -49,6 +56,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     uidCart: string,
     options?: { force?: boolean; sessionId?: number }
   ) => ipcRenderer.invoke("use-session", uidCart, options),
+  markSession: (sessionId: number) =>
+    ipcRenderer.invoke("mark-session", sessionId),
+  unmarkSession: (sessionId: number) =>
+    ipcRenderer.invoke("unmark-session", sessionId),
   checkDevice: () => ipcRenderer.invoke("check-device"),
   rfidListPorts: () => ipcRenderer.invoke("rfid:listPorts"),
   rfidGetPort: () => ipcRenderer.invoke("rfid:getPort"),
@@ -64,8 +75,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
   billingGetRevenueByMonth: () =>
     ipcRenderer.invoke("billing:getRevenueByMonth"),
   billingGetSessionStats: () => ipcRenderer.invoke("billing:getSessionStats"),
-  billingGetRecentLogs: () => ipcRenderer.invoke("billing:getRecentLogs"),
+  billingGetRecentLogs: (limit?: number) =>
+    ipcRenderer.invoke("billing:getRecentLogs", limit),
   dashboardGetStats: () => ipcRenderer.invoke("dashboard:getStats"),
+  dashboardGetOverview: () => ipcRenderer.invoke("dashboard:getOverview"),
+  settingsGet: () => ipcRenderer.invoke("settings:get"),
+  settingsSet: (partial: AppSettings) =>
+    ipcRenderer.invoke("settings:set", partial),
   ipcRenderer: {
     on: (channel: string, listener: (...args: any[]) => void) => {
       if (!RFID_CHANNELS.has(channel)) return;

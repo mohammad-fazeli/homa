@@ -1,33 +1,33 @@
 import { create } from "zustand";
 import { SessionResult } from "../global";
-import { useUsersStore } from "./users";
 
 interface CalendarStore {
   allEvents: SessionResult[];
   isLoading: boolean;
+  lastStart: string | null;
+  lastEnd: string | null;
   loadEvents: (start: string, end: string) => Promise<void>;
+  refresh: () => Promise<void>;
 }
 
-export const useCalendarStore = create<CalendarStore>((set) => ({
+export const useCalendarStore = create<CalendarStore>((set, get) => ({
   allEvents: [],
   isLoading: false,
+  lastStart: null,
+  lastEnd: null,
 
   loadEvents: async (start: string, end: string) => {
-    set({ isLoading: true });
+    set({ isLoading: true, lastStart: start, lastEnd: end });
     try {
       const data = await window.electronAPI?.getCalendar(start, end);
-      const user = useUsersStore.getState().user;
-      const currentUserId = user?.id;
-
-      const filteredEvents =
-        data?.filter((event) => event.userId !== currentUserId) ?? [];
-
-      set({
-        isLoading: false,
-        allEvents: filteredEvents,
-      });
+      set({ isLoading: false, allEvents: data ?? [] });
     } catch {
       set({ isLoading: false });
     }
+  },
+
+  refresh: async () => {
+    const { lastStart, lastEnd, loadEvents } = get();
+    if (lastStart && lastEnd) await loadEvents(lastStart, lastEnd);
   },
 }));

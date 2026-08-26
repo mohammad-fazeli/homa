@@ -71,6 +71,9 @@ export interface UserFindAllItem {
   phone: string;
   nationalId: string;
   course: UserCourseSummary;
+  usedSessions: number;
+  remainingSessions: number;
+  hasCard: boolean;
 }
 
 export interface UserFindAllResult {
@@ -107,6 +110,15 @@ export interface UserFindByIdResult {
   courses: UserCourseDetail[];
 }
 
+export type UserListFilter = "all" | "no_card" | "low_credit" | "today";
+
+export interface UserFilterCounts {
+  all: number;
+  no_card: number;
+  low_credit: number;
+  today: number;
+}
+
 export interface UseSessionResult {
   success: boolean;
   message: string;
@@ -115,9 +127,12 @@ export interface UseSessionResult {
     | "NO_SESSION"
     | "OUT_OF_TOLERANCE"
     | "ALREADY_USED"
-    | "OK";
+    | "OK"
+    | "UNMARKED";
   sessionId?: number;
   userName?: string;
+  remainingSessions?: number;
+  totalSessions?: number;
 }
 
 export interface RfidPortInfo {
@@ -127,6 +142,7 @@ export interface RfidPortInfo {
 
 export interface AppSettings {
   rfidPort?: string;
+  attendanceToleranceMinutes?: number;
 }
 
 export interface BillingSummary {
@@ -158,6 +174,42 @@ export interface DashboardStats {
   activeUsers: number;
   weeklySessions: number;
   monthlyRevenue: number;
+  todayCount: number;
+  attendedToday: number;
+  remainingSessions: number;
+}
+
+export interface DashboardSessionItem {
+  id: number;
+  userId: number;
+  title: string;
+  date: string;
+  used: 0 | 1;
+  usedAt: string | Date | null;
+}
+
+export interface DashboardAttentionUser {
+  id: number;
+  firstName: string;
+  lastName: string;
+  remainingSessions: number;
+  totalSessions: number;
+}
+
+export interface WeeklyBreakdownItem {
+  day: number;
+  label: string;
+  total: number;
+  used: number;
+}
+
+export interface DashboardOverview {
+  stats: DashboardStats;
+  todaySessions: DashboardSessionItem[];
+  upcomingSessions: DashboardSessionItem[];
+  recentAttendance: DashboardSessionItem[];
+  weeklyBreakdown: WeeklyBreakdownItem[];
+  attentionUsers: DashboardAttentionUser[];
 }
 
 export interface WeeklySessionItem {

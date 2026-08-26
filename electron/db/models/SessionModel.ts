@@ -124,6 +124,18 @@ export const SessionModel = {
     ).run(usedAt, id);
   },
 
+  unuseSession(id: number) {
+    db.prepare(
+      `
+      UPDATE Sessions
+      SET used = 0,
+          usedAt = NULL,
+          updatedAt = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `
+    ).run(id);
+  },
+
   findLastUnused(userId: number) {
     const row: any = db
       .prepare(
@@ -146,6 +158,62 @@ export const SessionModel = {
 
   delete(id: number) {
     db.prepare(`DELETE FROM Sessions WHERE id = ?`).run(id);
+  },
+
+  findUpcoming(limit = 8): SessionResult[] {
+    const rows = db
+      .prepare(
+        `
+      SELECT 
+        s.id,
+        s.courseId,
+        s.date,
+        s.used,
+        s.usedAt,
+        s.createdAt,
+        s.updatedAt,
+        c.userId,
+        u.firstName,
+        u.lastName
+      FROM Sessions s
+      JOIN Courses c ON s.courseId = c.id
+      JOIN Users u ON c.userId = u.id
+      WHERE s.used = 0 AND datetime(s.date) >= datetime('now')
+      ORDER BY s.date ASC
+      LIMIT ?
+      `
+      )
+      .all(limit);
+
+    return (rows as any[]).map(mapSessionRow);
+  },
+
+  findRecentUsed(limit = 8): SessionResult[] {
+    const rows = db
+      .prepare(
+        `
+      SELECT 
+        s.id,
+        s.courseId,
+        s.date,
+        s.used,
+        s.usedAt,
+        s.createdAt,
+        s.updatedAt,
+        c.userId,
+        u.firstName,
+        u.lastName
+      FROM Sessions s
+      JOIN Courses c ON s.courseId = c.id
+      JOIN Users u ON c.userId = u.id
+      WHERE s.used = 1
+      ORDER BY datetime(COALESCE(s.usedAt, s.date)) DESC
+      LIMIT ?
+      `
+      )
+      .all(limit);
+
+    return (rows as any[]).map(mapSessionRow);
   },
 
   findAll(start: string | Date, end: string | Date): SessionResult[] {

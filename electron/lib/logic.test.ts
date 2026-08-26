@@ -57,6 +57,14 @@ describe("rfid session match", () => {
     expect(match.status).toBe("ok");
     if (match.status === "ok") expect(match.session.id).toBe(2);
   });
+
+  it("respects a custom tolerance window", () => {
+    const later = new Date(2026, 7, 25, 10, 40, 0);
+    const tight = resolveRfidSession(sessions, later, { toleranceMinutes: 10 });
+    expect(tight.status).toBe("out_of_tolerance");
+    const wide = resolveRfidSession(sessions, later, { toleranceMinutes: 60 });
+    expect(wide.status).toBe("ok");
+  });
 });
 
 describe("hour conflict", () => {

@@ -2,10 +2,13 @@ import { create } from "zustand";
 import {
   SessionUpdateInput,
   UserCreateInput,
+  UserFilterCounts,
   UserFindAllItem,
   UserFindByIdResult,
+  UserListFilter,
   UserUpdateInput,
 } from "../global";
+import { emitAppDataChange } from "../lib/bus";
 
 interface UsersStore {
   users: UserFindAllItem[];
@@ -15,6 +18,8 @@ interface UsersStore {
   limit: number;
   totalPages: number;
   query: string;
+  filter: UserListFilter;
+  filterCounts: UserFilterCounts;
   isLoading: boolean;
   editingUser: boolean;
   deleteUserId: number | null;
@@ -23,6 +28,9 @@ interface UsersStore {
   capturingUid: boolean;
   setPage: (p: number) => void;
   setQuery: (q: string) => void;
+  setFilter: (filter: UserListFilter) => void;
+  openUser: (id: number) => void;
+  closeUser: () => void;
   setUser: (v: UserFindByIdResult | null) => void;
   clearUser: () => void;
   setEditingUser: (u: boolean) => void;
@@ -31,6 +39,7 @@ interface UsersStore {
   setPickSessionUserId: (id: number | null) => void;
   setCapturingUid: (v: boolean) => void;
   loadUsers: () => Promise<void>;
+  loadFilterCounts: () => Promise<void>;
   getUser: (id: number) => Promise<void>;
   addUser: (
     user: UserCreateInput,
@@ -58,6 +67,8 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
   user: null,
   total: 0,
   query: "",
+  filter: "all",
+  filterCounts: { all: 0, no_card: 0, low_credit: 0, today: 0 },
   limit: 10,
   page: 1,
   totalPages: 1,
@@ -69,6 +80,12 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
   capturingUid: false,
   setPage: (p) => set({ page: p }),
   setQuery: (q) => set({ query: q, page: 1 }),
+  setFilter: (filter) => set({ filter, page: 1 }),
+  openUser: (id) => {
+    set({ viewUserId: id, user: null });
+    void get().getUser(id);
+  },
+  closeUser: () => set({ viewUserId: null, user: null }),
   setUser: (u) => set({ user: u }),
   clearUser: () => set({ user: null }),
   setEditingUser: (u) => set({ editingUser: u }),
@@ -83,7 +100,8 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
       const data = await window.electronAPI?.getUsers(
         get().page,
         get().limit,
-        get().query
+        get().query,
+        get().filter
       );
       set({
         users: data?.data ?? [],
@@ -96,11 +114,18 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
     } catch {
       set({ isLoading: false });
     }
+    void get().loadFilterCounts();
+  },
+
+  loadFilterCounts: async () => {
+    const counts = await window.electronAPI?.getUserFilterCounts();
+    if (counts) set({ filterCounts: counts });
   },
 
   addUser: async (user, course, sessions) => {
     await window.electronAPI?.addUser(user, course, sessions);
     await get().loadUsers();
+    emitAppDataChange();
   },
 
   getUser: async (userId) => {
@@ -112,6 +137,7 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
   updateUser: async (user, course, sessions) => {
     await window.electronAPI?.updateUser?.(user, course, sessions);
     await get().loadUsers();
+    emitAppDataChange();
   },
 
   saveCourse: async (userId, course, sessions) => {
@@ -122,6 +148,7 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
     );
     if (result) set({ user: result });
     await get().loadUsers();
+    emitAppDataChange();
   },
 
   deleteCourse: async (courseId) => {
@@ -129,21 +156,25 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
     const user = get().user;
     if (user) await get().getUser(user.id);
     await get().loadUsers();
+    emitAppDataChange();
   },
 
   deleteUser: async (id) => {
     await window.electronAPI?.deleteUser?.(id);
     await get().loadUsers();
     set({ deleteUserId: null });
+    emitAppDataChange();
   },
 
   addSession: async (userId, dateIso) => {
     await window.electronAPI?.addSession(userId, dateIso);
     await get().loadUsers();
+    emitAppDataChange();
   },
 
   removeLastSession: async (userId) => {
     await window.electronAPI?.removeLastSession(userId);
     await get().loadUsers();
+    emitAppDataChange();
   },
 }));

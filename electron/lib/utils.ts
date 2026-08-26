@@ -1,6 +1,11 @@
-export function startOfWeekSaturday(date = new Date()): Date {
+export function startOfDay(date = new Date()): Date {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+export function startOfWeekSaturday(date = new Date()): Date {
+  const d = startOfDay(date);
   const day = d.getDay();
   const diff = (day + 1) % 7;
   d.setDate(d.getDate() - diff);

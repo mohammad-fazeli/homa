@@ -8,6 +8,7 @@ import { registerCalendarHandlers } from "./ipc/calendar";
 import { registerBillingHandlers } from "./ipc/billing";
 import { registerDashboardHandlers } from "./ipc/dashboard";
 import { registerBackupHandlers } from "./ipc/backup";
+import { registerSettingsHandlers } from "./ipc/settings";
 
 dotenv.config();
 
@@ -36,10 +37,10 @@ function registerWindowHandlers() {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 900,
-    minHeight: 640,
+    width: 1440,
+    height: 900,
+    minWidth: 1100,
+    minHeight: 720,
     frame: false,
     show: false,
     title: "هما",
@@ -88,6 +89,7 @@ app.whenReady().then(() => {
   registerDashboardHandlers();
   registerRfidIpc();
   registerBackupHandlers();
+  registerSettingsHandlers();
   createWindow();
 });
 

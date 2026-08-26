@@ -13,7 +13,9 @@ export default function AppRoutes() {
   return (
     <Suspense
       fallback={
-        <div className="p-8 text-slate-500">در حال بارگذاری صفحه...</div>
+        <div className="h-full flex items-center justify-center text-muted">
+          در حال آماده‌سازی صفحه...
+        </div>
       }
     >
       <Routes>

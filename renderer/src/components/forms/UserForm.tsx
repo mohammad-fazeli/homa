@@ -14,6 +14,8 @@ import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { sameHour } from "@shared/dates";
 import { isValidNationalId, isValidPhone } from "@shared/validation";
+import Modal from "../Modal";
+import ConfirmDialog from "../ui/ConfirmDialog";
 
 interface FormState {
   firstName: string;
@@ -56,6 +58,7 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
   });
   const [courses, setCourses] = useState<CourseDraft[]>([emptyCourse()]);
   const [active, setActive] = useState(0);
+  const [confirmDeleteCourse, setConfirmDeleteCourse] = useState(false);
 
   const current = courses[active] ?? courses[0];
 
@@ -221,26 +224,26 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
 
   if (editingUser && !user) {
     return (
-      <div className="bg-white rounded-3xl p-10 max-w-4xl mx-auto text-center text-slate-500">
+      <div className="surface-card rounded-3xl p-10 max-w-4xl mx-auto text-center text-muted">
         در حال بارگذاری...
       </div>
     );
   }
 
   return (
-    <div className="bg-white shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-3xl p-10 max-w-4xl mx-auto border border-slate-100">
-      <div className="mb-10 flex justify-between items-center">
+    <div className="surface-card rounded-3xl p-8 max-w-5xl mx-auto">
+      <div className="mb-8 flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold bg-linear-to-r from-indigo-600 to-sky-500 bg-clip-text text-transparent">
+          <h2 className="text-2xl font-bold text-ink">
             {editingUser ? "ویرایش مشتری" : "مشتری جدید"}
           </h2>
-          <p className="text-slate-500 mt-1 text-sm">
-            اطلاعات مشتری و دوره‌ها را وارد کنید
+          <p className="text-muted mt-1 text-sm">
+            اطلاعات فردی، دوره و زمان جلسات را در یک صفحه کامل کنید.
           </p>
         </div>
         <Link
           to="/users"
-          className="inline-flex items-center gap-2 bg-linear-to-r from-sky-500 to-indigo-600 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg"
+          className="btn btn-ghost"
         >
           بازگشت <ArrowLeft size={16} />
         </Link>
@@ -252,37 +255,39 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
             label="نام"
             value={form.firstName}
             onChange={(v) => updateField("firstName", v)}
-            icon={<User size={18} className="text-slate-400" />}
+            icon={<User size={18} className="text-muted" />}
           />
           <Field
             label="نام خانوادگی"
             value={form.lastName}
             onChange={(v) => updateField("lastName", v)}
-            icon={<User size={18} className="text-slate-400" />}
+            icon={<User size={18} className="text-muted" />}
           />
           <Field
             label="شماره تلفن"
             value={form.phone}
             onChange={(v) => updateField("phone", v)}
-            icon={<Phone size={18} className="text-slate-400" />}
+            icon={<Phone size={18} className="text-muted" />}
           />
           <Field
             label="کد ملی"
             value={form.nationalId}
             onChange={(v) => updateField("nationalId", v)}
-            icon={<IdCard size={18} className="text-slate-400" />}
+            icon={<IdCard size={18} className="text-muted" />}
           />
-          {form.uidCart ? (
-            <div className="text-emerald-600 md:col-span-2">
-              {editingUser
-                ? "کارت فعلی ثبت شده. برای تعویض، کارت جدید را روی دستگاه بگذارید"
-                : "کارت شناسایی شد"}
-            </div>
-          ) : (
-            <div className="text-red-500 md:col-span-2">
-              کارت را در دستگاه بگذارید
-            </div>
-          )}
+          <div
+            className={`md:col-span-2 rounded-2xl border px-4 py-3 text-sm ${
+              form.uidCart
+                ? "border-brand/30 bg-brand-soft text-brand"
+                : "border-dashed border-line bg-paper text-muted"
+            }`}
+          >
+            {form.uidCart
+              ? editingUser
+                ? `کارت ثبت‌شده: ${form.uidCart} — برای تعویض، کارت جدید را روی دستگاه بگذارید`
+                : `کارت شناسایی شد: ${form.uidCart}`
+              : "اختیاری: کارت RFID را روی دستگاه بگذارید تا به این مشتری وصل شود."}
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -292,10 +297,10 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
                 key={course.id}
                 type="button"
                 onClick={() => setActive(index)}
-                className={`px-3 py-1.5 rounded-lg text-sm ${
+                className={`px-3 py-1.5 rounded-2xl text-sm ${
                   index === active
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-100 text-slate-600"
+                    ? "bg-brand text-white"
+                    : "bg-paper text-muted"
                 }`}
               >
                 دوره {index + 1}
@@ -308,7 +313,7 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
                   setCourses((prev) => [...prev, emptyCourse()]);
                   setActive(courses.length);
                 }}
-                className="px-3 py-1.5 rounded-lg text-sm border border-dashed border-slate-300"
+                className="px-3 py-1.5 rounded-2xl text-sm border border-dashed border-line text-muted hover:bg-paper"
               >
                 + دوره جدید
               </button>
@@ -316,18 +321,8 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
             {editingUser && current && current.id > 0 && courses.length > 1 && (
               <button
                 type="button"
-                onClick={async () => {
-                  if (!confirm("این دوره حذف شود؟")) return;
-                  try {
-                    await deleteCourse(current.id);
-                    toast.success("دوره حذف شد");
-                  } catch (err) {
-                    toast.error(
-                      err instanceof Error ? err.message : "حذف دوره ناموفق بود"
-                    );
-                  }
-                }}
-                className="px-3 py-1.5 rounded-lg text-sm text-red-600"
+                onClick={() => setConfirmDeleteCourse(true)}
+                className="px-3 py-1.5 rounded-2xl text-sm text-danger hover:bg-paper"
               >
                 حذف این دوره
               </button>
@@ -343,11 +338,16 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
                   10
                 ).toLocaleString()}
                 onChange={(v) => patchCourse(active, { cost: v })}
-                icon={<CreditCard size={18} className="text-slate-400" />}
+                icon={<CreditCard size={18} className="text-muted" />}
               />
 
-              <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-4">
-                <span className="text-slate-700 font-medium">تعداد جلسات</span>
+              <div className="flex items-center justify-between bg-paper border border-line rounded-2xl p-4">
+                <div>
+                  <span className="text-ink font-medium">تعداد جلسات</span>
+                  <p className="text-xs text-muted mt-1">
+                    {Math.max(0, current.sessions - current.records.length).toLocaleString("fa-IR")} جلسه برای زمان‌بندی باقی مانده
+                  </p>
+                </div>
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
@@ -356,19 +356,19 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
                         sessions: Math.max(0, current.sessions - 1),
                       })
                     }
-                    className="w-10 h-10 flex items-center justify-center bg-white border border-slate-300 rounded-xl"
+                    className="w-10 h-10 flex items-center justify-center bg-surface border border-line rounded-xl hover:bg-paper"
                   >
                     <Minus size={18} />
                   </button>
-                  <div className="text-xl font-semibold w-12 text-center">
-                    {current.sessions}
+                  <div className="text-xl font-semibold w-12 text-center text-ink">
+                    {current.sessions.toLocaleString("fa-IR")}
                   </div>
                   <button
                     type="button"
                     onClick={() =>
                       patchCourse(active, { sessions: current.sessions + 1 })
                     }
-                    className="w-10 h-10 flex items-center justify-center bg-white border border-slate-300 rounded-xl"
+                    className="w-10 h-10 flex items-center justify-center bg-surface border border-line rounded-xl hover:bg-paper"
                   >
                     <Plus size={18} />
                   </button>
@@ -388,19 +388,40 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
           <button
             type="button"
             onClick={onCancel}
-            className="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100"
+            className="btn btn-ghost"
           >
             انصراف
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="px-6 py-2.5 rounded-xl text-white bg-linear-to-r from-sky-500 to-indigo-600 disabled:opacity-60"
+            className="btn btn-primary disabled:opacity-60"
           >
             {saving ? "در حال ذخیره..." : "ذخیره"}
           </button>
         </div>
       </form>
+      {confirmDeleteCourse && current && (
+        <Modal onClose={() => setConfirmDeleteCourse(false)}>
+          <ConfirmDialog
+            title="حذف دوره"
+            description="جلسات این دوره هم پاک می‌شود."
+            confirmLabel="حذف دوره"
+            onCancel={() => setConfirmDeleteCourse(false)}
+            onConfirm={async () => {
+              try {
+                await deleteCourse(current.id);
+                setConfirmDeleteCourse(false);
+                toast.success("دوره حذف شد");
+              } catch (err) {
+                toast.error(
+                  err instanceof Error ? err.message : "حذف دوره ناموفق بود"
+                );
+              }
+            }}
+          />
+        </Modal>
+      )}
     </div>
   );
 }
@@ -418,13 +439,13 @@ function Field({
 }) {
   return (
     <div className="space-y-1">
-      <label className="text-sm text-slate-500">{label}</label>
-      <div className="flex items-center gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 focus-within:border-indigo-500 focus-within:bg-white">
+      <label className="text-sm text-muted">{label}</label>
+      <div className="flex items-center gap-2 rounded-2xl border border-line bg-paper px-3 py-2.5 focus-within:border-brand focus-within:bg-surface">
         {icon}
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="flex-1 bg-transparent outline-none text-slate-700"
+          className="flex-1 bg-transparent outline-none text-ink"
         />
       </div>
     </div>

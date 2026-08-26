@@ -11,8 +11,12 @@ import type {
   SessionStats,
   BillingLogItem,
   DashboardStats,
+  DashboardOverview,
   UseSessionResult,
   RfidPortInfo,
+  UserListFilter,
+  UserFilterCounts,
+  AppSettings,
 } from "../../shared/types";
 
 export type RendererElectronAPI = {
@@ -28,8 +32,10 @@ export type RendererElectronAPI = {
   getUsers: (
     page: number,
     limit: number,
-    search?: string
+    search?: string,
+    filter?: UserListFilter
   ) => Promise<UserFindAllResult>;
+  getUserFilterCounts: () => Promise<UserFilterCounts>;
   updateUser: (
     user: UserUpdateInput,
     course?: { cost: number; sessions: number; id: number },
@@ -48,6 +54,8 @@ export type RendererElectronAPI = {
     uidCart: string,
     options?: { force?: boolean; sessionId?: number }
   ) => Promise<UseSessionResult>;
+  markSession: (sessionId: number) => Promise<UseSessionResult>;
+  unmarkSession: (sessionId: number) => Promise<UseSessionResult>;
   checkDevice: () => Promise<"online" | "offline">;
   rfidListPorts: () => Promise<RfidPortInfo[]>;
   rfidGetPort: () => Promise<string>;
@@ -61,8 +69,11 @@ export type RendererElectronAPI = {
   billingGetSummary: () => Promise<BillingSummary>;
   billingGetRevenueByMonth: () => Promise<RevenueByMonthItem[]>;
   billingGetSessionStats: () => Promise<SessionStats>;
-  billingGetRecentLogs: () => Promise<BillingLogItem[]>;
+  billingGetRecentLogs: (limit?: number) => Promise<BillingLogItem[]>;
   dashboardGetStats: () => Promise<DashboardStats>;
+  dashboardGetOverview: () => Promise<DashboardOverview>;
+  settingsGet: () => Promise<AppSettings>;
+  settingsSet: (partial: AppSettings) => Promise<AppSettings>;
   ipcRenderer: {
     on: (channel: string, listener: (...args: any[]) => void) => any;
     removeListener: (channel: string, listener: any) => any;

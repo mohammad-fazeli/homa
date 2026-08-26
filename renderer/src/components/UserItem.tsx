@@ -1,98 +1,133 @@
 import React from "react";
-import { Edit2, Eye, MinusCircle, PlusCircle, Trash2, User } from "lucide-react";
+import { Eye, MinusCircle, Pencil, PlusCircle, Trash2 } from "lucide-react";
 import { useUsersStore } from "../store/users";
 import { useNavigate } from "react-router-dom";
 import { UserFindAllItem } from "../global";
 import { toast } from "react-toastify";
+import Avatar from "./ui/Avatar";
+import ProgressBar from "./ui/ProgressBar";
+import { formatDateTime } from "../lib/format";
 
-interface UserItemProps {
-  user: UserFindAllItem;
-}
-
-const UserItem: React.FC<UserItemProps> = ({ user }) => {
+export default function UserItem({ user }: { user: UserFindAllItem }) {
   const navigate = useNavigate();
-  const { setDeleteUserId, setViewUserId, setPickSessionUserId, removeLastSession } =
-    useUsersStore();
+  const {
+    setDeleteUserId,
+    openUser,
+    setPickSessionUserId,
+    removeLastSession,
+  } = useUsersStore();
+
+  const total = user.course?.totalSessions || 0;
+  const used = user.usedSessions ?? 0;
+  const remaining = user.remainingSessions ?? Math.max(0, total - used);
+  const tone =
+    remaining === 0 && total > 0 ? "danger" : remaining <= 2 ? "gold" : "brand";
 
   return (
-    <tr className="hover:bg-slate-50 transition-colors">
-      <td className="px-6 py-4">
+    <tr
+      className="hover:bg-paper/80 transition-colors cursor-pointer"
+      onClick={() => openUser(user.id)}
+    >
+      <td className="px-5 py-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-400 to-sky-400 flex items-center justify-center text-white font-semibold">
-            <User />
-          </div>
+          <Avatar firstName={user.firstName} lastName={user.lastName} />
           <div>
-            <div className="font-medium text-slate-800">
+            <div className="font-medium text-ink">
               {user.firstName} {user.lastName}
             </div>
-            <div className="text-xs text-slate-400">شناسه: {user.id}</div>
+            <div className="text-xs text-muted mt-0.5 flex items-center gap-2">
+              <a
+                href={`tel:${user.phone}`}
+                dir="ltr"
+                className="hover:text-brand"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {user.phone}
+              </a>
+              <span
+                className={`px-1.5 py-0.5 rounded-full ${
+                  user.hasCard
+                    ? "bg-brand-soft text-brand"
+                    : "bg-gold-soft text-gold"
+                }`}
+              >
+                {user.hasCard ? "کارت دارد" : "بدون کارت"}
+              </span>
+            </div>
           </div>
         </div>
       </td>
-      <td className="px-6 py-4 hidden md:table-cell text-slate-600 text-center">
-        {user.phone}
-      </td>
-      <td className="px-6 py-4 hidden lg:table-cell text-slate-600 text-center">
+      <td className="px-5 py-4 hidden lg:table-cell text-muted text-sm">
         {user.course?.nextSessionDate
-          ? new Date(user.course.nextSessionDate).toLocaleString("fa-IR")
-          : "ندارد"}
+          ? formatDateTime(user.course.nextSessionDate)
+          : "جلسه‌ای نیست"}
       </td>
-      <td className="px-6 py-4 text-center">
-        <div className="inline-flex items-center gap-2">
-          <button
-            onClick={async () => {
-              try {
-                await removeLastSession(user.id);
-              } catch (err) {
-                toast.error(
-                  err instanceof Error ? err.message : "حذف جلسه ناموفق بود"
-                );
-              }
-            }}
-            className="p-1 rounded-md hover:bg-slate-100"
-            title="حذف آخرین جلسه استفاده‌نشده"
-          >
-            <MinusCircle size={20} />
-          </button>
-          <div className="px-3 py-1 rounded-md bg-slate-100 font-medium">
-            {user.course?.totalSessions || 0}
+      <td className="px-5 py-4">
+        <div className="min-w-40">
+          <div className="flex items-center justify-between text-xs mb-1">
+            <span className="text-muted">
+              {remaining.toLocaleString("fa-IR")} باقی‌مانده
+            </span>
+            <span className="text-ink">
+              {used.toLocaleString("fa-IR")}/{total.toLocaleString("fa-IR")}
+            </span>
           </div>
-          <button
-            onClick={() => setPickSessionUserId(user.id)}
-            className="p-1 rounded-md hover:bg-slate-100"
-            title="افزودن جلسه"
-          >
-            <PlusCircle size={20} />
-          </button>
+          <ProgressBar value={used} max={total} tone={tone} />
+          <div className="inline-flex items-center gap-1 mt-2">
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                try {
+                  await removeLastSession(user.id);
+                } catch (err) {
+                  toast.error(
+                    err instanceof Error ? err.message : "حذف جلسه ناموفق بود"
+                  );
+                }
+              }}
+              className="p-1 rounded-lg hover:bg-paper text-muted"
+              title="حذف آخرین جلسه استفاده‌نشده"
+            >
+              <MinusCircle size={16} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setPickSessionUserId(user.id);
+              }}
+              className="p-1 rounded-lg hover:bg-paper text-brand"
+              title="افزودن جلسه"
+            >
+              <PlusCircle size={16} />
+            </button>
+          </div>
         </div>
       </td>
-      <td className="px-6 py-4 text-center">
-        <div className="inline-flex items-center gap-2">
+      <td className="px-5 py-4">
+        <div className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={() => setViewUserId(user.id)}
-            className="px-3 py-2.5 rounded-md border border-slate-200"
+            onClick={() => openUser(user.id)}
+            className="p-2 rounded-xl border border-line hover:bg-paper"
             title="مشاهده"
           >
-            <Eye size={14} />
+            <Eye size={15} />
           </button>
           <button
             onClick={() => navigate(`/users/edit/${user.id}`)}
-            className="px-3 py-2.5 rounded-md border border-slate-200"
+            className="p-2 rounded-xl border border-line hover:bg-paper"
             title="ویرایش"
           >
-            <Edit2 size={14} />
+            <Pencil size={15} />
           </button>
           <button
             onClick={() => setDeleteUserId(user.id)}
-            className="px-3 py-2.5 rounded-md border border-red-100 text-red-600"
+            className="p-2 rounded-xl border border-line text-danger hover:bg-paper"
             title="حذف"
           >
-            <Trash2 size={14} />
+            <Trash2 size={15} />
           </button>
         </div>
       </td>
     </tr>
   );
-};
-
-export default UserItem;
+}

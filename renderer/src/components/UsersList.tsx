@@ -1,54 +1,70 @@
-import React from "react";
 import { UserFindAllItem } from "../global";
 import UserItem from "./UserItem";
 import Pagination from "./Pagination";
 import { useUsersStore } from "../store/users";
+import EmptyState from "./ui/EmptyState";
+import { TableSkeleton } from "./ui/Skeleton";
+import { Users } from "lucide-react";
+import { Link } from "react-router-dom";
 
-interface UsersListProps {
+export default function UsersList({
+  isLoading,
+  users,
+}: {
   isLoading: boolean;
   users: UserFindAllItem[];
-}
-
-const UsersList: React.FC<UsersListProps> = ({ isLoading, users }) => {
+}) {
   const { page, totalPages, setPage } = useUsersStore();
+
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg pb-5">
-      <table className="w-full">
-        <thead className="bg-linear-to-r from-sky-50 to-indigo-50">
-          <tr className="text-slate-500 text-sm">
-            <th className="px-6 py-4 text-center">کاربر</th>
-            <th className="px-6 py-4 text-center hidden md:table-cell">تلفن</th>
-            <th className="px-6 py-4 text-center hidden lg:table-cell">
-              جلسه بعدی
-            </th>
-            <th className="px-6 py-4 text-center">جلسات</th>
-            <th className="px-6 py-4 text-center">اقدامات</th>
-          </tr>
-        </thead>
-        <tbody>
-          {isLoading && (
+    <div className="overflow-hidden rounded-3xl border border-line bg-surface">
+      <div className="overflow-auto max-h-[calc(100vh-19rem)]">
+        <table className="w-full">
+          <thead className="bg-paper/95 text-muted text-sm sticky top-0 z-10">
             <tr>
-              <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
-                در حال بارگذاری...
-              </td>
+              <th className="px-5 py-3 text-right font-medium">مشتری</th>
+              <th className="px-5 py-3 text-right font-medium hidden lg:table-cell">
+                جلسه بعدی
+              </th>
+              <th className="px-5 py-3 text-right font-medium">پیشرفت دوره</th>
+              <th className="px-5 py-3 text-right font-medium">اقدامات</th>
             </tr>
-          )}
-
-          {!isLoading && users.length === 0 && (
-            <tr>
-              <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
-                موردی برای نمایش وجود ندارد.
-              </td>
-            </tr>
-          )}
-
-          {!isLoading &&
-            users.map((u) => <UserItem user={u} key={u.id} />)}
-        </tbody>
-      </table>
-      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+          </thead>
+          <tbody>
+            {isLoading && users.length === 0 && (
+              <tr>
+                <td colSpan={4}>
+                  <TableSkeleton />
+                </td>
+              </tr>
+            )}
+            {!isLoading && users.length === 0 && (
+              <tr>
+                <td colSpan={4}>
+                  <EmptyState
+                    icon={<Users size={22} />}
+                    title="مشتری‌ای پیدا نشد"
+                    description="یک مشتری جدید بسازید یا فیلتر و جستجو را عوض کنید."
+                    action={
+                      <Link to="/users/new" className="btn btn-primary text-sm">
+                        ساخت مشتری
+                      </Link>
+                    }
+                  />
+                </td>
+              </tr>
+            )}
+            {users.map((u) => (
+              <UserItem user={u} key={u.id} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {totalPages > 1 && (
+        <div className="py-4">
+          <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+        </div>
+      )}
     </div>
   );
-};
-
-export default UsersList;
+}

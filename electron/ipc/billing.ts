@@ -90,7 +90,7 @@ export function registerBillingHandlers() {
   // ===============================
   ipcMain.handle(
     "billing:getRecentLogs",
-    async (): Promise<BillingLogItem[]> => {
+    async (_event, limit = 10): Promise<BillingLogItem[]> => {
       const rows = db
         .prepare(
           `
@@ -104,10 +104,10 @@ export function registerBillingHandlers() {
         FROM SessionLogs sl
         JOIN Users u ON sl.userId = u.id
         ORDER BY sl.createdAt DESC
-        LIMIT 10
+        LIMIT ?
       `
         )
-        .all();
+        .all(Math.min(500, Math.max(1, Number(limit) || 10)));
 
       return rows.map((r: any) => ({
         id: r.id,

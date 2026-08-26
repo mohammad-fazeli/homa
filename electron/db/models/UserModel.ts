@@ -7,8 +7,60 @@ import {
   UserFindByIdResult,
   UserCourseSummary,
   UserCourseDetail,
+  UserListFilter,
+  UserFilterCounts,
 } from "../types";
-import { mapSqliteError } from "../../lib/utils";
+import { addDays, mapSqliteError, startOfDay } from "../../lib/utils";
+
+function todayRange() {
+  const start = startOfDay();
+  return { start: start.toISOString(), end: addDays(start, 1).toISOString() };
+}
+
+function listWhere(search: string, filter: UserListFilter) {
+  const clauses: string[] = [];
+  const params: Array<string | number> = [];
+  const term = search.trim();
+
+  if (term) {
+    const like = `%${term}%`;
+    clauses.push(
+      `(firstName LIKE ? OR lastName LIKE ? OR (firstName || ' ' || lastName) LIKE ? OR phone LIKE ? OR nationalId LIKE ? OR IFNULL(uidCart, '') LIKE ?)`
+    );
+    params.push(like, like, like, like, like, like);
+  }
+
+  if (filter === "no_card") {
+    clauses.push(`(uidCart IS NULL OR TRIM(uidCart) = '')`);
+  } else if (filter === "today") {
+    const { start, end } = todayRange();
+    clauses.push(`EXISTS (
+      SELECT 1 FROM Sessions s
+      JOIN Courses c ON s.courseId = c.id
+      WHERE c.userId = Users.id
+        AND datetime(s.date) >= datetime(?)
+        AND datetime(s.date) < datetime(?)
+    )`);
+    params.push(start, end);
+  } else if (filter === "low_credit") {
+    clauses.push(`
+      COALESCE((SELECT SUM(sessions) FROM Courses WHERE userId = Users.id), 0) > 0
+      AND (
+        COALESCE((SELECT SUM(sessions) FROM Courses WHERE userId = Users.id), 0)
+        - COALESCE((
+          SELECT COUNT(*) FROM Sessions s
+          JOIN Courses c ON s.courseId = c.id
+          WHERE c.userId = Users.id AND s.used = 1
+        ), 0)
+      ) <= 2
+    `);
+  }
+
+  return {
+    sql: clauses.length ? `WHERE ${clauses.join(" AND ")}` : "",
+    params,
+  };
+}
 
 function mapSessions(sessions: any[]) {
   return sessions.map((s: any) => ({
@@ -57,54 +109,68 @@ function mapUser(user: any): UserFindByIdResult {
 }
 
 export const UserModel = {
-  findAll(page = 1, limit = 15, search = ""): UserFindAllResult {
+  filterCounts(): UserFilterCounts {
+    const { start, end } = todayRange();
+    const count = (sql: string, params: Array<string | number> = []) =>
+      (db.prepare(sql).get(...params) as { count: number }).count;
+
+    return {
+      all: count(`SELECT COUNT(*) AS count FROM Users`),
+      no_card: count(`
+        SELECT COUNT(*) AS count FROM Users
+        WHERE uidCart IS NULL OR TRIM(uidCart) = ''
+      `),
+      today: count(
+        `
+        SELECT COUNT(DISTINCT u.id) AS count
+        FROM Users u
+        JOIN Courses c ON c.userId = u.id
+        JOIN Sessions s ON s.courseId = c.id
+        WHERE datetime(s.date) >= datetime(?) AND datetime(s.date) < datetime(?)
+        `,
+        [start, end]
+      ),
+      low_credit: count(`
+        SELECT COUNT(*) AS count FROM Users u
+        WHERE COALESCE((SELECT SUM(sessions) FROM Courses WHERE userId = u.id), 0) > 0
+          AND (
+            COALESCE((SELECT SUM(sessions) FROM Courses WHERE userId = u.id), 0)
+            - COALESCE((
+              SELECT COUNT(*) FROM Sessions s
+              JOIN Courses c ON s.courseId = c.id
+              WHERE c.userId = u.id AND s.used = 1
+            ), 0)
+          ) <= 2
+      `),
+    };
+  },
+
+  findAll(
+    page = 1,
+    limit = 15,
+    search = "",
+    filter: UserListFilter = "all"
+  ): UserFindAllResult {
     const offset = (page - 1) * limit;
-    const searchQuery = search.trim() ? `%${search.trim()}%` : null;
+    const where = listWhere(search, filter);
 
-    const totalStmt = searchQuery
-      ? db.prepare(`
-        SELECT COUNT(*) AS count
-        FROM Users
-        WHERE firstName LIKE ? OR lastName LIKE ? OR phone LIKE ? OR nationalId LIKE ?
-      `)
-      : db.prepare(`SELECT COUNT(*) AS count FROM Users`);
+    const total = (
+      db
+        .prepare(`SELECT COUNT(*) AS count FROM Users ${where.sql}`)
+        .get(...where.params) as { count: number }
+    ).count;
 
-    const total = searchQuery
-      ? (
-          totalStmt.get(
-            searchQuery,
-            searchQuery,
-            searchQuery,
-            searchQuery
-          ) as { count: number }
-        ).count
-      : (totalStmt.get() as { count: number }).count;
-
-    const usersStmt = searchQuery
-      ? db.prepare(`
+    const users = db
+      .prepare(
+        `
         SELECT *
         FROM Users
-        WHERE firstName LIKE ? OR lastName LIKE ? OR phone LIKE ? OR nationalId LIKE ?
+        ${where.sql}
         ORDER BY id DESC
         LIMIT ? OFFSET ?
-      `)
-      : db.prepare(`
-        SELECT *
-        FROM Users
-        ORDER BY id DESC
-        LIMIT ? OFFSET ?
-      `);
-
-    const users = searchQuery
-      ? usersStmt.all(
-          searchQuery,
-          searchQuery,
-          searchQuery,
-          searchQuery,
-          limit,
-          offset
-        )
-      : usersStmt.all(limit, offset);
+      `
+      )
+      .all(...where.params, limit, offset);
 
     const data: UserFindAllItem[] = (users as any[]).map((u) => {
       const stats: any = db
@@ -140,11 +206,26 @@ export const UserModel = {
         )
         .get(u.id);
 
+      const usedSessions = (
+        db
+          .prepare(
+            `
+            SELECT COUNT(*) AS count
+            FROM Sessions s
+            JOIN Courses c ON s.courseId = c.id
+            WHERE c.userId = ? AND s.used = 1
+          `
+          )
+          .get(u.id) as { count: number }
+      ).count;
+
+      const totalSessions = stats?.totalSessions ?? 0;
+
       const courseSummary: UserCourseSummary = {
         id: latest?.id ?? 0,
         userId: u.id,
         cost: latest?.cost ?? 0,
-        totalSessions: stats?.totalSessions ?? 0,
+        totalSessions,
         nextSessionDate: nextSession?.date ?? null,
       };
 
@@ -155,6 +236,9 @@ export const UserModel = {
         phone: u.phone,
         nationalId: u.nationalId,
         course: courseSummary,
+        usedSessions,
+        remainingSessions: Math.max(0, totalSessions - usedSessions),
+        hasCard: Boolean(u.uidCart),
       };
     });
 

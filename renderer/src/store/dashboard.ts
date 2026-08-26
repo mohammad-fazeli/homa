@@ -1,22 +1,36 @@
 import { create } from "zustand";
-import { DashboardStats } from "../global";
+import { DashboardOverview } from "../global";
+
+const empty: DashboardOverview = {
+  stats: {
+    activeUsers: 0,
+    weeklySessions: 0,
+    monthlyRevenue: 0,
+    todayCount: 0,
+    attendedToday: 0,
+    remainingSessions: 0,
+  },
+  todaySessions: [],
+  upcomingSessions: [],
+  recentAttendance: [],
+  weeklyBreakdown: [],
+  attentionUsers: [],
+};
 
 interface DashboardStore {
-  statsResult: DashboardStats;
+  overview: DashboardOverview;
+  loading: boolean;
   loadData: () => Promise<void>;
 }
 
 export const useDashboardStore = create<DashboardStore>((set) => ({
-  statsResult: {
-    activeUsers: 0,
-    weeklySessions: 0,
-    monthlyRevenue: 0,
-  },
+  overview: empty,
+  loading: false,
 
   loadData: async () => {
-    const statsResult = await window.electronAPI?.dashboardGetStats();
-    if (statsResult) {
-      set({ statsResult });
-    }
+    set({ loading: true });
+    const overview = await window.electronAPI?.dashboardGetOverview();
+    if (overview) set({ overview, loading: false });
+    else set({ loading: false });
   },
 }));

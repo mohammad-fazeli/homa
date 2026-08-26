@@ -11,23 +11,19 @@ export default function EditUser() {
   useEffect(() => {
     setEditingUser(true);
     clearUser();
-    if (id) {
-      getUser(Number(id));
-    }
+    if (id) getUser(Number(id));
     return () => {
       setEditingUser(false);
     };
   }, [id, getUser, setEditingUser, clearUser]);
 
   return (
-    <div className="p-6">
-      <UserForm
-        onCancel={() => {
-          clearUser();
-          setEditingUser(false);
-          navigate("/users");
-        }}
-      />
-    </div>
+    <UserForm
+      onCancel={() => {
+        clearUser();
+        setEditingUser(false);
+        navigate("/users");
+      }}
+    />
   );
 }
