@@ -23,6 +23,23 @@ interface AttendanceStore {
 
 let overlayTimer: number | null = null;
 
+function playBeep(ok: boolean) {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = ok ? 880 : 240;
+    gain.gain.value = 0.05;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.16);
+  } catch {
+    /* ignore */
+  }
+}
+
 function refreshOpenUser() {
   const { viewUserId, getUser } = useUsersStore.getState();
   if (viewUserId) void getUser(viewUserId);
@@ -60,6 +77,7 @@ export const useAttendanceStore = create<AttendanceStore>((set, get) => ({
     }
     get().showOverlay(result);
     if (result.success) {
+      playBeep(result.code === "OK");
       emitAppDataChange();
       refreshOpenUser();
     }

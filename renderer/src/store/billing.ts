@@ -31,7 +31,12 @@ export const useBillingStore = create<BillingStore>((set) => ({
     set({
       summary: summary ?? null,
       revenueData: revenueData ?? [],
-      sessionStats: sessionStats ?? { used: 0, remaining: 0 },
+      sessionStats: sessionStats ?? {
+        used: 0,
+        remaining: 0,
+        absent: 0,
+        cancelled: 0,
+      },
       logs: logs ?? [],
     });
   },

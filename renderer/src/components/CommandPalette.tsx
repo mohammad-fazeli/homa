@@ -8,6 +8,8 @@ import {
   Settings,
   Users,
   Wallet,
+  School,
+  Monitor,
 } from "lucide-react";
 import { useUsersStore } from "../store/users";
 import type { UserFindAllItem } from "../global";
@@ -17,6 +19,8 @@ const PAGES = [
   { id: "users", title: "مشتریان", hint: "فهرست و جستجو", path: "/users", icon: Users },
   { id: "sessions", title: "تقویم جلسات", hint: "برنامه هفته", path: "/sessions", icon: CalendarDays },
   { id: "billing", title: "مالی", hint: "درآمد و گزارش", path: "/billing", icon: Wallet },
+  { id: "academy", title: "آموزشگاه", hint: "کلاس و مربی", path: "/academy", icon: School },
+  { id: "kiosk", title: "کیوسک", hint: "میز ورودی", path: "/kiosk", icon: Monitor },
   { id: "settings", title: "تنظیمات", hint: "RFID و پشتیبان", path: "/settings", icon: Settings },
   { id: "new", title: "مشتری جدید", hint: "Ctrl + N", path: "/users/new", icon: Plus },
 ];

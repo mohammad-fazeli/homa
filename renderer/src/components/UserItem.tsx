@@ -53,6 +53,16 @@ export default function UserItem({ user }: { user: UserFindAllItem }) {
               >
                 {user.hasCard ? "کارت دارد" : "بدون کارت"}
               </span>
+              {user.debt > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full bg-gold-soft text-gold">
+                  بدهکار
+                </span>
+              )}
+              {user.expired && (
+                <span className="px-1.5 py-0.5 rounded-full bg-danger/10 text-danger">
+                  منقضی
+                </span>
+              )}
             </div>
           </div>
         </div>

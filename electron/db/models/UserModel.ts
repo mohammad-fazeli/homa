@@ -9,12 +9,49 @@ import {
   UserCourseDetail,
   UserListFilter,
   UserFilterCounts,
+  UserCourseSessionItem,
 } from "../types";
 import { addDays, mapSqliteError, startOfDay } from "../../lib/utils";
+import { normalizeStatus } from "../../../shared/session";
+import { PaymentModel } from "./PaymentModel";
 
 function todayRange() {
   const start = startOfDay();
   return { start: start.toISOString(), end: addDays(start, 1).toISOString() };
+}
+
+function remainingSql(userAlias: string) {
+  return `
+    COALESCE((SELECT SUM(sessions) FROM Courses WHERE userId = ${userAlias}.id), 0)
+    - COALESCE((
+      SELECT COUNT(*) FROM Sessions s
+      JOIN Courses c ON s.courseId = c.id
+      WHERE c.userId = ${userAlias}.id AND s.used = 1
+    ), 0)
+  `;
+}
+
+function debtSql(userAlias: string) {
+  return `
+    COALESCE((SELECT SUM(cost) FROM Courses WHERE userId = ${userAlias}.id), 0)
+    - COALESCE((SELECT SUM(amount) FROM Payments WHERE userId = ${userAlias}.id), 0)
+  `;
+}
+
+function expiredSql(userAlias: string) {
+  return `
+    EXISTS (
+      SELECT 1 FROM Courses c
+      WHERE c.userId = ${userAlias}.id
+        AND c.expiresAt IS NOT NULL AND TRIM(c.expiresAt) != ''
+        AND datetime(c.expiresAt) < datetime('now')
+        AND (
+          c.sessions - COALESCE((
+            SELECT COUNT(*) FROM Sessions s WHERE s.courseId = c.id AND s.used = 1
+          ), 0)
+        ) > 0
+    )
+  `;
 }
 
 function listWhere(search: string, filter: UserListFilter) {
@@ -40,20 +77,18 @@ function listWhere(search: string, filter: UserListFilter) {
       WHERE c.userId = Users.id
         AND datetime(s.date) >= datetime(?)
         AND datetime(s.date) < datetime(?)
+        AND IFNULL(s.status, 'scheduled') != 'cancelled'
     )`);
     params.push(start, end);
   } else if (filter === "low_credit") {
     clauses.push(`
       COALESCE((SELECT SUM(sessions) FROM Courses WHERE userId = Users.id), 0) > 0
-      AND (
-        COALESCE((SELECT SUM(sessions) FROM Courses WHERE userId = Users.id), 0)
-        - COALESCE((
-          SELECT COUNT(*) FROM Sessions s
-          JOIN Courses c ON s.courseId = c.id
-          WHERE c.userId = Users.id AND s.used = 1
-        ), 0)
-      ) <= 2
+      AND (${remainingSql("Users")}) <= 2
     `);
+  } else if (filter === "expired") {
+    clauses.push(expiredSql("Users"));
+  } else if (filter === "debt") {
+    clauses.push(`(${debtSql("Users")}) > 0`);
   }
 
   return {
@@ -62,40 +97,68 @@ function listWhere(search: string, filter: UserListFilter) {
   };
 }
 
-function mapSessions(sessions: any[]) {
+function mapSessions(sessions: any[]): UserCourseSessionItem[] {
   return sessions.map((s: any) => ({
     id: s.id,
     date: s.date,
     used: s.used as 0 | 1,
     usedAt: s.usedAt,
+    status: normalizeStatus(s.status, s.used),
+    roomId: s.roomId ?? null,
+    instructorId: s.instructorId ?? null,
   }));
-}
-
-function mapCourseDetail(course: any, sessions: any[]): UserCourseDetail {
-  return {
-    id: course.id,
-    cost: course.cost,
-    totalSessions: course.sessions,
-    createdAt: course.createdAt,
-    sessions: mapSessions(sessions),
-  };
 }
 
 function loadCourses(userId: number): UserCourseDetail[] {
   const courses = db
-    .prepare(`SELECT * FROM Courses WHERE userId = ? ORDER BY id DESC`)
+    .prepare(
+      `
+      SELECT
+        c.*,
+        r.name AS roomName,
+        r.color AS roomColor,
+        CASE
+          WHEN i.id IS NULL THEN NULL
+          ELSE i.firstName || ' ' || i.lastName
+        END AS instructorName
+      FROM Courses c
+      LEFT JOIN Rooms r ON r.id = c.roomId
+      LEFT JOIN Instructors i ON i.id = c.instructorId
+      WHERE c.userId = ?
+      ORDER BY c.id DESC
+    `
+    )
     .all(userId) as any[];
 
   return courses.map((course) => {
     const sessions = db
       .prepare(`SELECT * FROM Sessions WHERE courseId = ? ORDER BY date ASC`)
       .all(course.id);
-    return mapCourseDetail(course, sessions);
+    const paidAmount = PaymentModel.sumByCourse(course.id);
+    return {
+      id: course.id,
+      cost: course.cost,
+      totalSessions: course.sessions,
+      title: course.title || "دوره",
+      roomId: course.roomId ?? null,
+      instructorId: course.instructorId ?? null,
+      templateId: course.templateId ?? null,
+      expiresAt: course.expiresAt ?? null,
+      notes: course.notes ?? null,
+      roomName: course.roomName ?? null,
+      roomColor: course.roomColor ?? null,
+      instructorName: course.instructorName ?? null,
+      paidAmount,
+      debt: Math.max(0, course.cost - paidAmount),
+      createdAt: course.createdAt,
+      sessions: mapSessions(sessions),
+    };
   });
 }
 
 function mapUser(user: any): UserFindByIdResult {
   const courses = loadCourses(user.id);
+  const debt = courses.reduce((sum, course) => sum + course.debt, 0);
   return {
     id: user.id,
     firstName: user.firstName,
@@ -103,8 +166,10 @@ function mapUser(user: any): UserFindByIdResult {
     phone: user.phone,
     nationalId: user.nationalId,
     uidCart: user.uidCart,
+    notes: user.notes ?? null,
     course: courses[0] ?? null,
     courses,
+    debt,
   };
 }
 
@@ -127,21 +192,17 @@ export const UserModel = {
         JOIN Courses c ON c.userId = u.id
         JOIN Sessions s ON s.courseId = c.id
         WHERE datetime(s.date) >= datetime(?) AND datetime(s.date) < datetime(?)
+          AND IFNULL(s.status, 'scheduled') != 'cancelled'
         `,
         [start, end]
       ),
       low_credit: count(`
         SELECT COUNT(*) AS count FROM Users u
         WHERE COALESCE((SELECT SUM(sessions) FROM Courses WHERE userId = u.id), 0) > 0
-          AND (
-            COALESCE((SELECT SUM(sessions) FROM Courses WHERE userId = u.id), 0)
-            - COALESCE((
-              SELECT COUNT(*) FROM Sessions s
-              JOIN Courses c ON s.courseId = c.id
-              WHERE c.userId = u.id AND s.used = 1
-            ), 0)
-          ) <= 2
+          AND (${remainingSql("u")}) <= 2
       `),
+      expired: count(`SELECT COUNT(*) AS count FROM Users u WHERE ${expiredSql("u")}`),
+      debt: count(`SELECT COUNT(*) AS count FROM Users u WHERE (${debtSql("u")}) > 0`),
     };
   },
 
@@ -187,7 +248,14 @@ export const UserModel = {
 
       const latest: any = stats?.latestCourseId
         ? db
-            .prepare(`SELECT id, userId, cost, sessions FROM Courses WHERE id = ?`)
+            .prepare(
+              `
+              SELECT c.id, c.userId, c.cost, c.sessions, c.title, r.name AS roomName
+              FROM Courses c
+              LEFT JOIN Rooms r ON r.id = c.roomId
+              WHERE c.id = ?
+            `
+            )
             .get(stats.latestCourseId)
         : null;
 
@@ -199,6 +267,7 @@ export const UserModel = {
           JOIN Courses c ON s.courseId = c.id
           WHERE c.userId = ?
             AND s.used = 0
+            AND IFNULL(s.status, 'scheduled') != 'cancelled'
             AND datetime(s.date) >= datetime('now')
           ORDER BY s.date ASC
           LIMIT 1
@@ -220,6 +289,17 @@ export const UserModel = {
       ).count;
 
       const totalSessions = stats?.totalSessions ?? 0;
+      const paid = PaymentModel.sumByUser(u.id);
+      const contracted = (
+        db
+          .prepare(
+            `SELECT COALESCE(SUM(cost), 0) AS sum FROM Courses WHERE userId = ?`
+          )
+          .get(u.id) as { sum: number }
+      ).sum;
+      const expiredRow = db
+        .prepare(`SELECT ${expiredSql("Users")} AS expired FROM Users WHERE id = ?`)
+        .get(u.id) as { expired: number };
 
       const courseSummary: UserCourseSummary = {
         id: latest?.id ?? 0,
@@ -227,6 +307,8 @@ export const UserModel = {
         cost: latest?.cost ?? 0,
         totalSessions,
         nextSessionDate: nextSession?.date ?? null,
+        title: latest?.title ?? null,
+        roomName: latest?.roomName ?? null,
       };
 
       return {
@@ -239,6 +321,10 @@ export const UserModel = {
         usedSessions,
         remainingSessions: Math.max(0, totalSessions - usedSessions),
         hasCard: Boolean(u.uidCart),
+        courseTitle: latest?.title || "—",
+        roomName: latest?.roomName ?? null,
+        debt: Math.max(0, contracted - paid),
+        expired: Boolean(expiredRow?.expired),
       };
     });
 
@@ -266,8 +352,8 @@ export const UserModel = {
   create(data: UserCreateInput) {
     try {
       const stmt = db.prepare(`
-        INSERT INTO Users (firstName, lastName, phone, nationalId, uidCart)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO Users (firstName, lastName, phone, nationalId, uidCart, notes)
+        VALUES (?, ?, ?, ?, ?, ?)
       `);
 
       const result = stmt.run(
@@ -275,7 +361,8 @@ export const UserModel = {
         data.lastName,
         data.phone,
         data.nationalId,
-        data.uidCart || null
+        data.uidCart || null,
+        data.notes?.trim() || null
       );
 
       return this.findById(result.lastInsertRowid as number);
@@ -293,7 +380,7 @@ export const UserModel = {
         `
         UPDATE Users
         SET firstName = ?, lastName = ?, phone = ?, nationalId = ?, uidCart = ?,
-            updatedAt = CURRENT_TIMESTAMP
+            notes = ?, updatedAt = CURRENT_TIMESTAMP
         WHERE id = ?
       `
       ).run(
@@ -302,6 +389,7 @@ export const UserModel = {
         data.phone,
         data.nationalId,
         data.uidCart || null,
+        data.notes?.trim() || null,
         data.id
       );
     } catch (err) {

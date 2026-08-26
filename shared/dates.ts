@@ -46,3 +46,39 @@ export function sameHour(a: Date, b: Date): boolean {
 export function hourKey(date: Date): string {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}-${date.getHours()}`;
 }
+
+/** Saturday = 0 … Friday = 6 (matches the academy calendar). */
+export function saturdayWeekdayIndex(date: Date): number {
+  return (date.getDay() + 1) % 7;
+}
+
+export function generateRecurringDates(options: {
+  startDate: Date;
+  weekdays: number[];
+  hour: number;
+  count: number;
+  maxDays?: number;
+}): Date[] {
+  const weekdays = [...new Set(options.weekdays)].filter(
+    (day) => day >= 0 && day <= 6
+  );
+  if (weekdays.length === 0 || options.count <= 0) return [];
+
+  const dates: Date[] = [];
+  const cursor = new Date(options.startDate);
+  cursor.setHours(0, 0, 0, 0);
+  const maxDays = options.maxDays ?? Math.max(400, options.count * 14);
+  let guard = 0;
+
+  while (dates.length < options.count && guard < maxDays) {
+    if (weekdays.includes(saturdayWeekdayIndex(cursor))) {
+      const slot = new Date(cursor);
+      slot.setHours(options.hour, 0, 0, 0);
+      dates.push(slot);
+    }
+    cursor.setDate(cursor.getDate() + 1);
+    guard += 1;
+  }
+
+  return dates;
+}

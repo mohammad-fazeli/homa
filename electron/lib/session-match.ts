@@ -1,9 +1,20 @@
 import { sameHour } from "../../shared/dates";
+import { occupiesSlot } from "../../shared/session";
 
 export type RfidSession = {
   id: number;
   date: string | Date;
   used: 0 | 1;
+  status?: string | null;
+};
+
+export type OccupancySession = {
+  id: number;
+  date: string | Date;
+  roomId?: number | null;
+  instructorId?: number | null;
+  status?: string | null;
+  used?: 0 | 1;
 };
 
 export type RfidMatch =
@@ -11,6 +22,10 @@ export type RfidMatch =
   | { status: "ok"; session: RfidSession }
   | { status: "already_used"; session: RfidSession }
   | { status: "out_of_tolerance"; session: RfidSession };
+
+function isOpenSession(session: RfidSession) {
+  return session.used === 0 && session.status !== "cancelled";
+}
 
 export function resolveRfidSession(
   sessions: RfidSession[],
@@ -22,7 +37,7 @@ export function resolveRfidSession(
   if (options?.sessionId) {
     const forced = sessions.find((s) => s.id === options.sessionId);
     if (!forced) return { status: "none" };
-    if (forced.used === 1) return { status: "already_used", session: forced };
+    if (!isOpenSession(forced)) return { status: "already_used", session: forced };
     return { status: "ok", session: forced };
   }
 
@@ -37,7 +52,13 @@ export function resolveRfidSession(
 
   const today = sessions
     .map((session) => ({ session, ts: new Date(session.date).getTime() }))
-    .filter(({ ts }) => !Number.isNaN(ts) && ts >= startOfToday && ts < endOfToday)
+    .filter(
+      ({ ts, session }) =>
+        !Number.isNaN(ts) &&
+        ts >= startOfToday &&
+        ts < endOfToday &&
+        session.status !== "cancelled"
+    )
     .sort((a, b) => a.ts - b.ts);
 
   if (today.length === 0) return { status: "none" };
@@ -46,15 +67,21 @@ export function resolveRfidSession(
     ({ ts }) => ts >= nowTs - toleranceMs && ts <= nowTs + toleranceMs
   );
 
-  const unusedInTolerance = inTolerance.find(({ session }) => session.used === 0);
+  const unusedInTolerance = inTolerance.find(({ session }) =>
+    isOpenSession(session)
+  );
   if (unusedInTolerance) return { status: "ok", session: unusedInTolerance.session };
 
   const usedInTolerance = inTolerance.find(({ session }) => session.used === 1);
-  if (usedInTolerance && inTolerance.length && !today.some((t) => t.session.used === 0)) {
+  if (
+    usedInTolerance &&
+    inTolerance.length &&
+    !today.some((item) => isOpenSession(item.session))
+  ) {
     return { status: "already_used", session: usedInTolerance.session };
   }
 
-  const unusedToday = today.find(({ session }) => session.used === 0);
+  const unusedToday = today.find(({ session }) => isOpenSession(session));
   if (unusedToday) {
     if (options?.force) return { status: "ok", session: unusedToday.session };
     return { status: "out_of_tolerance", session: unusedToday.session };
@@ -73,5 +100,41 @@ export function hasHourConflict(
   return existing.some(
     (item) =>
       !excludeIds.includes(item.id) && sameHour(new Date(item.date), target)
+  );
+}
+
+export function countRoomOccupancy(
+  existing: OccupancySession[],
+  candidate: string | Date,
+  roomId: number | null | undefined,
+  excludeIds: number[] = []
+): number {
+  if (!roomId) return 0;
+  const target = new Date(candidate);
+  if (Number.isNaN(target.getTime())) return 0;
+  return existing.filter(
+    (item) =>
+      !excludeIds.includes(item.id) &&
+      item.roomId === roomId &&
+      occupiesSlot(item.status, item.used) &&
+      sameHour(new Date(item.date), target)
+  ).length;
+}
+
+export function isInstructorBusy(
+  existing: OccupancySession[],
+  candidate: string | Date,
+  instructorId: number | null | undefined,
+  excludeIds: number[] = []
+): boolean {
+  if (!instructorId) return false;
+  const target = new Date(candidate);
+  if (Number.isNaN(target.getTime())) return false;
+  return existing.some(
+    (item) =>
+      !excludeIds.includes(item.id) &&
+      item.instructorId === instructorId &&
+      occupiesSlot(item.status, item.used) &&
+      sameHour(new Date(item.date), target)
   );
 }

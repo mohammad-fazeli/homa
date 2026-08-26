@@ -1,4 +1,4 @@
-import { HashRouter, useNavigate } from "react-router-dom";
+import { HashRouter, useLocation, useNavigate } from "react-router-dom";
 import AppRoutes from "./routes/AppRoutes";
 import Sidebar from "./components/Sidebar";
 import { useEffect, useRef, useState } from "react";
@@ -6,6 +6,7 @@ import { ToastContainer, toast } from "react-toastify";
 import { useUsersStore } from "./store/users";
 import Modal from "./components/Modal";
 import AttendanceOverlay from "./components/AttendanceOverlay";
+import LockScreen from "./components/LockScreen";
 import CommandPalette from "./components/CommandPalette";
 import UserProfileModal from "./components/UserProfileModal";
 import WeeklyCalendar from "./components/WeeklyCalendar";
@@ -21,7 +22,10 @@ export default function App() {
 
 function AppShell() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const kiosk = location.pathname === "/kiosk";
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [locked, setLocked] = useState(false);
   const lastScan = useRef({ uid: "", at: 0 });
   const capturingUid = useUsersStore((s) => s.capturingUid);
   const pickSessionUserId = useUsersStore((s) => s.pickSessionUserId);
@@ -35,6 +39,12 @@ function AppShell() {
     setPending,
     clearOverlay,
   } = useAttendanceStore();
+
+  useEffect(() => {
+    void window.electronAPI?.settingsGet().then((settings) => {
+      if (settings?.lockEnabled) setLocked(true);
+    });
+  }, []);
 
   useEffect(() => {
     const onCard = async (uid: string) => {
@@ -65,6 +75,10 @@ function AppShell() {
 
       if (meta && e.key.toLowerCase() === "k") {
         e.preventDefault();
+        if (e.shiftKey) {
+          navigate("/kiosk");
+          return;
+        }
         setPaletteOpen((open) => !open);
         return;
       }
@@ -87,9 +101,10 @@ function AppShell() {
         newestOnTop
         pauseOnHover
       />
+      {locked && <LockScreen onUnlock={() => setLocked(false)} />}
       <div className="flex h-[calc(100vh-36px)]">
-        <Sidebar />
-        <main className="flex-1 h-full overflow-y-auto w-full px-7 py-6 app-canvas">
+        {!kiosk && <Sidebar />}
+        <main className={`flex-1 h-full overflow-y-auto w-full app-canvas ${kiosk ? "px-8 py-6" : "px-7 py-6"}`}>
           <AppRoutes />
         </main>
       </div>

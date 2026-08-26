@@ -6,6 +6,8 @@ import {
   Wallet,
   Settings,
   Plus,
+  School,
+  Monitor,
   Wifi,
   WifiOff,
 } from "lucide-react";
@@ -16,6 +18,8 @@ const items = [
   { name: "مشتریان", path: "/users", icon: Users, end: true },
   { name: "تقویم جلسات", path: "/sessions", icon: CalendarDays },
   { name: "مالی", path: "/billing", icon: Wallet },
+  { name: "آموزشگاه", path: "/academy", icon: School },
+  { name: "کیوسک", path: "/kiosk", icon: Monitor },
   { name: "تنظیمات", path: "/settings", icon: Settings },
 ];
 

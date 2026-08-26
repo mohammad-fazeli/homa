@@ -1,3 +1,5 @@
+import type { SessionStatus } from "../global";
+
 export function formatMoney(value: number) {
   return `${value.toLocaleString("fa-IR")} تومان`;
 }
@@ -98,4 +100,19 @@ export function userHue(id: number) {
 export function userColor(id: number) {
   const hues = [166, 28, 205, 328, 92, 18, 232];
   return `hsl(${hues[Math.abs(id) % hues.length]} 42% 36%)`;
+}
+
+export function sessionStatusLabel(status?: SessionStatus | string | null) {
+  switch (status) {
+    case "present":
+      return "حاضر";
+    case "absent":
+      return "غایب";
+    case "cancelled":
+      return "لغو";
+    case "makeup":
+      return "جبرانی";
+    default:
+      return "رزرو";
+  }
 }

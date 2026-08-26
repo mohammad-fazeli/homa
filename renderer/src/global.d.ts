@@ -17,6 +17,14 @@ import type {
   UserListFilter,
   UserFilterCounts,
   AppSettings,
+  CourseWriteInput,
+  AcademySnapshot,
+  RoomWriteInput,
+  InstructorWriteInput,
+  CourseTemplateWriteInput,
+  PaymentAttributes,
+  PaymentCreateInput,
+  SessionStatus,
 } from "../../shared/types";
 
 export type RendererElectronAPI = {
@@ -25,7 +33,7 @@ export type RendererElectronAPI = {
   close: () => void;
   addUser: (
     user: UserCreateInput,
-    course?: { cost: number; sessions: number },
+    course?: CourseWriteInput,
     sessions?: string[]
   ) => Promise<UserFindByIdResult>;
   getUser: (userid: number) => Promise<UserFindByIdResult>;
@@ -38,12 +46,12 @@ export type RendererElectronAPI = {
   getUserFilterCounts: () => Promise<UserFilterCounts>;
   updateUser: (
     user: UserUpdateInput,
-    course?: { cost: number; sessions: number; id: number },
+    course?: CourseWriteInput & { id: number },
     sessions?: SessionUpdateInput[]
   ) => Promise<UserFindByIdResult>;
   saveCourse: (
     userId: number,
-    course: { cost: number; sessions: number; id?: number },
+    course: CourseWriteInput,
     sessions?: SessionUpdateInput[]
   ) => Promise<UserFindByIdResult>;
   deleteCourse: (courseId: number) => Promise<number>;
@@ -74,6 +82,26 @@ export type RendererElectronAPI = {
   dashboardGetOverview: () => Promise<DashboardOverview>;
   settingsGet: () => Promise<AppSettings>;
   settingsSet: (partial: AppSettings) => Promise<AppSettings>;
+  settingsSetPin: (pin: string) => Promise<AppSettings>;
+  settingsClearPin: () => Promise<AppSettings>;
+  settingsVerifyPin: (pin: string) => Promise<boolean>;
+  academySnapshot: () => Promise<AcademySnapshot>;
+  academySaveRoom: (data: RoomWriteInput) => Promise<unknown>;
+  academyDeleteRoom: (id: number) => Promise<number>;
+  academySaveInstructor: (data: InstructorWriteInput) => Promise<unknown>;
+  academyDeleteInstructor: (id: number) => Promise<number>;
+  academySaveTemplate: (data: CourseTemplateWriteInput) => Promise<unknown>;
+  academyDeleteTemplate: (id: number) => Promise<number>;
+  billingListPayments: (
+    limit?: number,
+    userId?: number
+  ) => Promise<PaymentAttributes[]>;
+  billingCreatePayment: (data: PaymentCreateInput) => Promise<PaymentAttributes>;
+  billingDeletePayment: (id: number) => Promise<number>;
+  setSessionStatus: (
+    sessionId: number,
+    status: SessionStatus
+  ) => Promise<UseSessionResult>;
   ipcRenderer: {
     on: (channel: string, listener: (...args: any[]) => void) => any;
     removeListener: (channel: string, listener: any) => any;

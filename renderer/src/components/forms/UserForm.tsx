@@ -10,6 +10,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import WeeklyCalendar, { RecordItem } from "../WeeklyCalendar";
+import { useAcademyStore } from "../../store/academy";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { sameHour } from "@shared/dates";
@@ -30,12 +31,27 @@ interface CourseDraft {
   cost: string;
   sessions: number;
   records: RecordItem[];
+  title: string;
+  roomId: number | null;
+  instructorId: number | null;
+  templateId: number | null;
+  paidNow: boolean;
 }
 
 let draftSeq = -1;
 
 function emptyCourse(): CourseDraft {
-  return { id: draftSeq--, cost: "", sessions: 0, records: [] };
+  return {
+    id: draftSeq--,
+    cost: "",
+    sessions: 0,
+    records: [],
+    title: "دوره",
+    roomId: null,
+    instructorId: null,
+    templateId: null,
+    paidNow: true,
+  };
 }
 
 export default function UserForm({ onCancel }: { onCancel: () => void }) {
@@ -48,6 +64,7 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
     deleteCourse,
     setCapturingUid,
   } = useUsersStore();
+  const { rooms, instructors, templates, load: loadAcademy } = useAcademyStore();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<FormState>({
     firstName: "",
@@ -74,8 +91,9 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
 
   useEffect(() => {
     setCapturingUid(true);
+    void loadAcademy();
     return () => setCapturingUid(false);
-  }, [setCapturingUid]);
+  }, [setCapturingUid, loadAcademy]);
 
   useEffect(() => {
     if (editingUser && user) {
@@ -97,6 +115,11 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
                   ...s,
                   userId: user.id,
                 })) ?? [],
+              title: course.title || "دوره",
+              roomId: course.roomId ?? null,
+              instructorId: course.instructorId ?? null,
+              templateId: course.templateId ?? null,
+              paidNow: true,
             }))
           : [emptyCourse()];
       setCourses(loaded);
@@ -162,6 +185,11 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
               id: course.id > 0 ? course.id : undefined,
               cost: parseInt(course.cost.replaceAll(",", "") || "0", 10),
               sessions: course.sessions,
+              title: course.title,
+              roomId: course.roomId,
+              instructorId: course.instructorId,
+              templateId: course.templateId,
+              paidNow: course.paidNow,
             },
             course.records.map((r) => ({
               ...r,
@@ -177,6 +205,11 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
           {
             sessions: first?.sessions ?? 0,
             cost: parseInt(first?.cost.replaceAll(",", "") || "0", 10),
+            title: first?.title,
+            roomId: first?.roomId,
+            instructorId: first?.instructorId,
+            templateId: first?.templateId,
+            paidNow: first?.paidNow,
           },
           (first?.records ?? []).map((r) => new Date(r.date).toISOString())
         );
@@ -331,6 +364,81 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
 
           {current && (
             <>
+              <div className="grid md:grid-cols-2 gap-3">
+                <Field
+                  label="عنوان دوره"
+                  value={current.title}
+                  onChange={(v) => patchCourse(active, { title: v })}
+                  icon={<CreditCard size={18} className="text-muted" />}
+                />
+                <div className="space-y-1">
+                  <label className="text-sm text-muted">بسته آماده</label>
+                  <select
+                    className="w-full rounded-2xl border border-line px-3 py-2.5 bg-paper"
+                    value={current.templateId ?? ""}
+                    onChange={(e) => {
+                      const template = templates.find((item) => item.id === Number(e.target.value));
+                      patchCourse(active, {
+                        templateId: template?.id ?? null,
+                        title: template?.name || current.title,
+                        sessions: template?.sessions ?? current.sessions,
+                        cost: template ? String(template.cost) : current.cost,
+                      });
+                    }}
+                  >
+                    <option value="">انتخاب بسته</option>
+                    {templates.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm text-muted">کلاس</label>
+                  <select
+                    className="w-full rounded-2xl border border-line px-3 py-2.5 bg-paper"
+                    value={current.roomId ?? ""}
+                    onChange={(e) =>
+                      patchCourse(active, { roomId: e.target.value ? Number(e.target.value) : null })
+                    }
+                  >
+                    <option value="">بدون کلاس</option>
+                    {rooms.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name} ({item.capacity.toLocaleString("fa-IR")} نفر)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm text-muted">مربی</label>
+                  <select
+                    className="w-full rounded-2xl border border-line px-3 py-2.5 bg-paper"
+                    value={current.instructorId ?? ""}
+                    onChange={(e) =>
+                      patchCourse(active, {
+                        instructorId: e.target.value ? Number(e.target.value) : null,
+                      })
+                    }
+                  >
+                    <option value="">بدون مربی</option>
+                    {instructors.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.firstName} {item.lastName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  checked={current.paidNow}
+                  onChange={(e) => patchCourse(active, { paidNow: e.target.checked })}
+                />
+                هزینه همین حالا پرداخت شد
+              </label>
               <Field
                 label="هزینه دوره (تومان)"
                 value={parseInt(

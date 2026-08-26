@@ -8,6 +8,8 @@ const EditUser = lazy(() => import("../pages/EditUser"));
 const Sessions = lazy(() => import("../pages/Sessions"));
 const Billing = lazy(() => import("../pages/Billing"));
 const Settings = lazy(() => import("../pages/Settings"));
+const Academy = lazy(() => import("../pages/Academy"));
+const Kiosk = lazy(() => import("../pages/Kiosk"));
 
 export default function AppRoutes() {
   return (
@@ -27,6 +29,8 @@ export default function AppRoutes() {
         <Route path="/users/edit" element={<Navigate to="/users" replace />} />
         <Route path="/sessions" element={<Sessions />} />
         <Route path="/billing" element={<Billing />} />
+        <Route path="/academy" element={<Academy />} />
+        <Route path="/kiosk" element={<Kiosk />} />
         <Route path="/settings" element={<Settings />} />
       </Routes>
     </Suspense>

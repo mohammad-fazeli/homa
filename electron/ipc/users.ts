@@ -1,5 +1,7 @@
 import { ipcMain } from "electron";
 import {
+  CourseWriteInput,
+  SessionStatus,
   SessionUpdateInput,
   UserCreateInput,
   UserFilterCounts,
@@ -13,6 +15,7 @@ import { UserModel } from "../db/models/UserModel";
 import { CourseModel } from "../db/models/CourseModel";
 import { SessionModel } from "../db/models/SessionModel";
 import { SessionLogModel } from "../db/models/SessionLogModel";
+import { PaymentModel } from "../db/models/PaymentModel";
 import { toIsoDate } from "../../shared/dates";
 import {
   isValidNationalId,
@@ -94,18 +97,25 @@ function normalizeUser<T extends { phone: string; nationalId: string }>(user: T)
 
 function saveCourseForUser(
   userId: number,
-  course: { cost: number; sessions: number; id?: number },
+  course: CourseWriteInput,
   sessions?: SessionUpdateInput[] | string[]
 ) {
   let courseId = course.id ?? -1;
   const existingCourse = courseId > 0 ? CourseModel.findById(courseId) : null;
+  const payload = {
+    userId,
+    cost: course.cost,
+    sessions: course.sessions,
+    title: course.title,
+    roomId: course.roomId,
+    instructorId: course.instructorId,
+    templateId: course.templateId,
+    expiresAt: course.expiresAt,
+    notes: course.notes,
+  };
 
   if (!existingCourse) {
-    const created = CourseModel.create({
-      userId,
-      cost: course.cost,
-      sessions: course.sessions,
-    });
+    const created = CourseModel.create(payload);
     courseId = created.id;
     SessionLogModel.create({
       userId,
@@ -114,8 +124,17 @@ function saveCourseForUser(
       newValue: course.cost,
       description: "ثبت دوره",
     });
+    if (course.paidNow !== false && course.cost > 0) {
+      PaymentModel.create({
+        userId,
+        courseId,
+        amount: course.cost,
+        method: "cash",
+        note: "پرداخت هنگام ثبت دوره",
+      });
+    }
   } else {
-    CourseModel.update({ ...course, id: courseId });
+    CourseModel.update({ ...payload, id: courseId });
     if (existingCourse.cost !== course.cost) {
       SessionLogModel.create({
         userId,
@@ -128,6 +147,7 @@ function saveCourseForUser(
   }
 
   if (sessions) {
+    const saved = CourseModel.findById(courseId);
     const mapped = sessions.map((session) => {
       if (typeof session === "string") {
         return {
@@ -136,12 +156,17 @@ function saveCourseForUser(
           date: toIsoDate(session),
           used: 0 as const,
           usedAt: null,
+          status: "scheduled" as const,
+          roomId: saved?.roomId ?? null,
+          instructorId: saved?.instructorId ?? null,
         };
       }
       return {
         ...session,
         courseId,
         date: toIsoDate(session.date),
+        roomId: session.roomId ?? saved?.roomId ?? null,
+        instructorId: session.instructorId ?? saved?.instructorId ?? null,
       };
     });
     SessionModel.update(courseId, mapped);
@@ -156,7 +181,7 @@ export function registerUserHandlers() {
     (
       _event,
       user: UserCreateInput,
-      course?: { cost: number; sessions: number },
+      course?: CourseWriteInput,
       sessions?: string[]
     ): UserFindByIdResult => {
       validateUserInput(user);
@@ -203,7 +228,7 @@ export function registerUserHandlers() {
     (
       _event,
       updatedUser: UserUpdateInput,
-      course?: { cost: number; sessions: number; id: number },
+      course?: CourseWriteInput & { id: number },
       sessions?: SessionUpdateInput[]
     ): UserFindByIdResult => {
       validateUserInput(updatedUser);
@@ -226,7 +251,7 @@ export function registerUserHandlers() {
     (
       _event,
       userId: number,
-      course: { cost: number; sessions: number; id?: number },
+      course: CourseWriteInput,
       sessions?: SessionUpdateInput[]
     ) => {
       const user = UserModel.findById(userId);
@@ -253,12 +278,18 @@ export function registerUserHandlers() {
       if (!course) throw new Error("ابتدا یک دوره برای مشتری بسازید");
 
       const iso = toIsoDate(dateIso);
-      SessionModel.assertNoConflicts([iso]);
+      SessionModel.assertSlotAvailable([iso], {
+        roomId: course.roomId ?? null,
+        instructorId: course.instructorId ?? null,
+      });
       SessionModel.create({
         courseId: course.id,
         date: iso,
         used: 0,
         usedAt: null,
+        status: "scheduled",
+        roomId: course.roomId ?? null,
+        instructorId: course.instructorId ?? null,
       });
       CourseModel.update({
         id: course.id,
@@ -303,7 +334,14 @@ export function registerUserHandlers() {
         };
       }
 
-      const sessions = user.courses.flatMap((course) => course.sessions);
+      const sessions = user.courses.flatMap((course) =>
+        course.sessions.map((session) => ({
+          id: session.id,
+          date: session.date,
+          used: session.used,
+          status: session.status,
+        }))
+      );
       const toleranceMinutes = readSettings().attendanceToleranceMinutes ?? 20;
       const match = resolveRfidSession(sessions, new Date(), {
         ...options,
@@ -400,6 +438,56 @@ export function registerUserHandlers() {
         sessionId,
         "UNMARKED",
         `حضور ${session.title} لغو شد`,
+        true,
+        undefined,
+        sessionId
+      );
+    }
+  );
+
+  ipcMain.handle(
+    "set-session-status",
+    (_event, sessionId: number, status: SessionStatus): UseSessionResult => {
+      const session = SessionModel.findById(sessionId);
+      if (!session) {
+        return { success: false, message: "جلسه پیدا نشد", code: "NO_SESSION" };
+      }
+      if (status === "cancelled") {
+        SessionModel.setStatus(sessionId, "cancelled");
+        return resultForSession(
+          sessionId,
+          "UNMARKED",
+          `جلسه ${session.title} لغو شد`,
+          true,
+          undefined,
+          sessionId
+        );
+      }
+      if (status === "absent") {
+        SessionModel.setStatus(sessionId, "absent");
+        return resultForSession(
+          sessionId,
+          "OK",
+          `غیبت ${session.title} ثبت شد`,
+          true,
+          sessionId
+        );
+      }
+      if (status === "present" || status === "makeup") {
+        SessionModel.setStatus(sessionId, status);
+        return resultForSession(
+          sessionId,
+          "OK",
+          `حضور ${session.title} ثبت شد`,
+          true,
+          sessionId
+        );
+      }
+      SessionModel.setStatus(sessionId, "scheduled");
+      return resultForSession(
+        sessionId,
+        "UNMARKED",
+        `جلسه ${session.title} به رزرو برگشت`,
         true,
         undefined,
         sessionId

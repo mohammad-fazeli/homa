@@ -172,6 +172,23 @@ export default function Dashboard() {
         ))}
       </div>
 
+      {overview.roomOccupancy.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {overview.roomOccupancy.map((room) => (
+            <div key={room.roomId} className="surface-card rounded-3xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ background: room.color }} />
+                <span className="font-medium">{room.name}</span>
+              </div>
+              <p className="text-sm text-muted">
+                {room.booked.toLocaleString("fa-IR")} از {room.capacity.toLocaleString("fa-IR")} نفر رزرو ·{" "}
+                {room.present.toLocaleString("fa-IR")} حاضر
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <Card className="xl:col-span-2">
           <CardContent>

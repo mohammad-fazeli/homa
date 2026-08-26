@@ -18,6 +18,9 @@ type CalendarEvent = {
   start: Date;
   used?: 0 | 1;
   userId?: number;
+  status?: string;
+  roomName?: string | null;
+  roomColor?: string | null;
 };
 
 interface WeeklyCalendarProps {
@@ -82,6 +85,7 @@ export default function WeeklyCalendar({
   );
   const [peek, setPeek] = useState<CalendarEvent | null>(null);
   const { loadEvents, allEvents: storeEvents } = useCalendarStore();
+  const [roomFilter, setRoomFilter] = useState<string>("all");
 
   useEffect(() => {
     const start = new Date(currentWeek);
@@ -109,7 +113,7 @@ export default function WeeklyCalendar({
     onAddEvent?.(start);
   };
 
-  const recordEvents = useMemo(
+  const recordEvents: CalendarEvent[] = useMemo(
     () =>
       records.map((r) => ({
         id: r.id,
@@ -121,9 +125,22 @@ export default function WeeklyCalendar({
     [records]
   );
 
-  const allEvents = [
-    ...storeEvents.filter(
-      (ev) => currentUserId == null || currentUserId < 0 || ev.userId !== currentUserId
+  const mappedStore: CalendarEvent[] = storeEvents.map((ev) => ({
+    id: ev.id,
+    title: ev.title,
+    start: new Date(ev.start ?? ev.date),
+    used: ev.used,
+    userId: ev.userId,
+    status: ev.status,
+    roomName: ev.roomName,
+    roomColor: ev.roomColor,
+  }));
+  const rooms = [...new Set(mappedStore.map((ev) => ev.roomName).filter(Boolean))] as string[];
+  const allEvents: CalendarEvent[] = [
+    ...mappedStore.filter(
+      (ev) =>
+        (currentUserId == null || currentUserId < 0 || ev.userId !== currentUserId) &&
+        (roomFilter === "all" || ev.roomName === roomFilter)
     ),
     ...recordEvents,
   ];
@@ -165,6 +182,20 @@ export default function WeeklyCalendar({
               </>
             )}
           </span>
+          {rooms.length > 0 && (
+            <select
+              className="px-3 py-1.5 rounded-xl border border-line bg-surface"
+              value={roomFilter}
+              onChange={(e) => setRoomFilter(e.target.value)}
+            >
+              <option value="all">همه کلاس‌ها</option>
+              {rooms.map((room) => (
+                <option key={room} value={room}>
+                  {room}
+                </option>
+              ))}
+            </select>
+          )}
           <button
             type="button"
             className="px-3 py-1.5 rounded-xl border border-line hover:bg-paper"
@@ -299,28 +330,35 @@ export default function WeeklyCalendar({
                     now ? "bg-gold-soft ring-1 ring-gold ring-inset" : ""
                   } ${isToday(day) && !now ? "bg-brand-soft/40" : ""}`}
                 >
-                  {cellEvents.map((ev, idx) => (
-                    <motion.div
-                      key={ev.id + new Date(ev.start).getTime() + idx}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="absolute inset-0.5 text-white text-[10px] rounded-lg p-1 shadow-sm overflow-hidden"
-                      style={{
-                        background: ev.used
-                          ? "#2f7d57"
-                          : ev.userId === currentUserId
-                            ? "#14635c"
-                            : userColor(ev.userId || 0),
-                        opacity: ev.used ? 0.72 : 1,
-                      }}
-                    >
-                      {ev.used
-                        ? ev.title
-                        : ev.userId === currentUserId
-                          ? "رزرو این مشتری"
-                          : ev.title}
-                    </motion.div>
-                  ))}
+                  <div className="absolute inset-0.5 flex flex-col gap-0.5 overflow-hidden">
+                    {cellEvents.slice(0, 3).map((ev, idx) => (
+                      <motion.div
+                        key={ev.id + new Date(ev.start).getTime() + idx}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="occupancy-chip"
+                        style={{
+                          background:
+                            ev.status === "cancelled"
+                              ? "#9a8f83"
+                              : ev.roomColor ||
+                                (ev.used
+                                  ? "#2f7d57"
+                                  : ev.userId === currentUserId
+                                    ? "#14635c"
+                                    : userColor(ev.userId || 0)),
+                          opacity: ev.status === "cancelled" ? 0.55 : ev.used ? 0.8 : 1,
+                        }}
+                      >
+                        {ev.title}
+                      </motion.div>
+                    ))}
+                    {cellEvents.length > 3 && (
+                      <div className="occupancy-chip bg-ink/70">
+                        +{(cellEvents.length - 3).toLocaleString("fa-IR")}
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}

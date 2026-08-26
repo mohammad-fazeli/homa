@@ -68,17 +68,25 @@ export default function Billing() {
         }
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         <SummaryCard title="کل مشتریان" value={summary?.totalUsers ?? 0} />
         <SummaryCard title="کل دوره‌ها" value={summary?.totalCourses ?? 0} />
         <SummaryCard
-          title="درآمد کل"
+          title="میانگین قیمت دوره"
+          value={formatMoney(summary?.avgCoursePrice ?? 0)}
+        />
+        <SummaryCard
+          title="قراردادها"
           value={formatMoney(summary?.totalRevenue ?? 0)}
+        />
+        <SummaryCard
+          title="دریافت‌شده"
+          value={formatMoney(summary?.totalCollected ?? 0)}
           highlight
         />
         <SummaryCard
-          title="میانگین قیمت دوره"
-          value={formatMoney(summary?.avgCoursePrice ?? 0)}
+          title="بدهی باقی"
+          value={formatMoney(summary?.totalOutstanding ?? 0)}
         />
       </div>
 

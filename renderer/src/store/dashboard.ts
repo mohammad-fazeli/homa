@@ -15,6 +15,7 @@ const empty: DashboardOverview = {
   recentAttendance: [],
   weeklyBreakdown: [],
   attentionUsers: [],
+  roomOccupancy: [],
 };
 
 interface DashboardStore {

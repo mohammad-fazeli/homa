@@ -6,7 +6,7 @@ import Avatar from "./ui/Avatar";
 import ProgressBar from "./ui/ProgressBar";
 import { useUsersStore } from "../store/users";
 import { useAttendanceStore } from "../store/attendance";
-import { formatDateTime, formatMoney } from "../lib/format";
+import { formatDateTime, formatMoney, sessionStatusLabel } from "../lib/format";
 
 export default function UserProfileModal() {
   const { viewUserId, user, closeUser, setPickSessionUserId } = useUsersStore();
@@ -90,11 +90,18 @@ export default function UserProfileModal() {
                 return (
                   <div key={course.id} className="rounded-2xl border border-line p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="font-medium">دوره {index + 1}</div>
+                      <div className="font-medium">{course.title || `دوره ${index + 1}`}</div>
                       <div className="text-sm text-muted">
                         {formatMoney(course.cost)}
                       </div>
                     </div>
+                    {(course.roomName || course.instructorName || course.debt > 0) && (
+                      <p className="text-xs text-muted mb-2">
+                        {[course.roomName, course.instructorName, course.debt > 0 ? `بدهی ${formatMoney(course.debt)}` : null]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    )}
                     <div className="flex items-center justify-between text-xs text-muted mb-2">
                       <span>
                         {used.toLocaleString("fa-IR")} از{" "}
@@ -122,7 +129,7 @@ export default function UserProfileModal() {
                                 session.used ? "text-success" : "text-muted"
                               }
                             >
-                              {session.used ? "حاضر" : "رزرو"}
+                              {sessionStatusLabel(session.status)}
                             </span>
                             {session.used ? (
                               <button

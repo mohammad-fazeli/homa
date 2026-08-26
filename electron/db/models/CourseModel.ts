@@ -7,6 +7,12 @@ function mapCourse(row: any): CourseResult {
     userId: row.userId,
     cost: row.cost,
     sessions: row.sessions,
+    title: row.title ?? "دوره",
+    roomId: row.roomId ?? null,
+    instructorId: row.instructorId ?? null,
+    templateId: row.templateId ?? null,
+    expiresAt: row.expiresAt ?? null,
+    notes: row.notes ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -15,11 +21,24 @@ function mapCourse(row: any): CourseResult {
 export const CourseModel = {
   create(data: CourseCreateInput): CourseResult {
     const stmt = db.prepare(`
-      INSERT INTO Courses (userId, cost, sessions, createdAt, updatedAt)
-      VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      INSERT INTO Courses (
+        userId, cost, sessions, title, roomId, instructorId, templateId,
+        expiresAt, notes, createdAt, updatedAt
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `);
 
-    const result = stmt.run(data.userId, data.cost, data.sessions ?? 0);
+    const result = stmt.run(
+      data.userId,
+      data.cost,
+      data.sessions ?? 0,
+      data.title?.trim() || "دوره",
+      data.roomId ?? null,
+      data.instructorId ?? null,
+      data.templateId ?? null,
+      data.expiresAt ?? null,
+      data.notes ?? null
+    );
 
     return this.findById(result.lastInsertRowid as number)!;
   },
@@ -37,22 +56,46 @@ export const CourseModel = {
     return rows.map(mapCourse);
   },
 
-  update(data: { cost: number; sessions: number; id: number }) {
+  update(data: {
+    id: number;
+    cost: number;
+    sessions: number;
+    title?: string | null;
+    roomId?: number | null;
+    instructorId?: number | null;
+    templateId?: number | null;
+    expiresAt?: string | Date | null;
+    notes?: string | null;
+  }) {
     const course = this.findById(data.id);
     if (!course) return null;
 
     db.prepare(
       `
-    UPDATE Courses
-    SET cost = ?, sessions = ?
-    WHERE id = ?
-  `
-    ).run(data.cost, data.sessions, data.id);
+      UPDATE Courses
+      SET cost = ?, sessions = ?, title = ?, roomId = ?, instructorId = ?,
+          templateId = ?, expiresAt = ?, notes = ?, updatedAt = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `
+    ).run(
+      data.cost,
+      data.sessions,
+      data.title?.trim() || course.title || "دوره",
+      data.roomId === undefined ? course.roomId ?? null : data.roomId,
+      data.instructorId === undefined
+        ? course.instructorId ?? null
+        : data.instructorId,
+      data.templateId === undefined ? course.templateId ?? null : data.templateId,
+      data.expiresAt === undefined ? course.expiresAt ?? null : data.expiresAt,
+      data.notes === undefined ? course.notes ?? null : data.notes,
+      data.id
+    );
 
     return this.findById(data.id);
   },
 
   delete(id: number) {
+    db.prepare(`UPDATE Payments SET courseId = NULL WHERE courseId = ?`).run(id);
     return db.prepare(`DELETE FROM Courses WHERE id = ?`).run(id).changes;
   },
 };

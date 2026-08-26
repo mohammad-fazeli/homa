@@ -8,6 +8,8 @@ import {
 import { db } from "../db";
 import { addDays, startOfWeekSaturday } from "../lib/utils";
 import { SessionModel } from "../db/models/SessionModel";
+import { RoomModel } from "../db/models/RoomModel";
+import { occupiesSlot } from "../../shared/session";
 
 const WEEKDAYS_FA = [
   "شنبه",
@@ -30,6 +32,11 @@ function toItem(session: SessionResult): DashboardSessionItem {
         : new Date(session.date).toISOString(),
     used: session.used,
     usedAt: session.usedAt,
+    status: session.status,
+    roomName: session.roomName,
+    roomColor: session.roomColor,
+    instructorName: session.instructorName,
+    courseTitle: session.courseTitle,
   };
 }
 
@@ -64,6 +71,7 @@ function buildOverview(): DashboardOverview {
       SELECT COUNT(*) AS count
       FROM Sessions
       WHERE datetime(date) >= datetime(?) AND datetime(date) < datetime(?)
+        AND IFNULL(status, 'scheduled') != 'cancelled'
     `
       )
       .get(weekStart.toISOString(), weekEnd.toISOString()) as { count: number }
@@ -73,9 +81,9 @@ function buildOverview(): DashboardOverview {
     db
       .prepare(
         `
-        SELECT COALESCE(SUM(cost), 0) AS sum
-        FROM Courses
-        WHERE strftime('%Y-%m', createdAt) = strftime('%Y-%m', 'now')
+        SELECT COALESCE(SUM(amount), 0) AS sum
+        FROM Payments
+        WHERE strftime('%Y-%m', paidAt) = strftime('%Y-%m', 'now')
       `
       )
       .get() as { sum: number }
@@ -83,7 +91,9 @@ function buildOverview(): DashboardOverview {
 
   const remainingSessions = (
     db
-      .prepare(`SELECT COUNT(*) AS count FROM Sessions WHERE used = 0`)
+      .prepare(
+        `SELECT COUNT(*) AS count FROM Sessions WHERE used = 0 AND IFNULL(status, 'scheduled') != 'cancelled'`
+      )
       .get() as { count: number }
   ).count;
 
@@ -125,7 +135,13 @@ function buildOverview(): DashboardOverview {
           FROM Sessions s
           JOIN Courses c ON s.courseId = c.id
           WHERE c.userId = u.id AND s.used = 1
-        ), 0) AS usedSessions
+        ), 0) AS usedSessions,
+        EXISTS (
+          SELECT 1 FROM Courses c
+          WHERE c.userId = u.id
+            AND c.expiresAt IS NOT NULL AND TRIM(c.expiresAt) != ''
+            AND datetime(c.expiresAt) < datetime('now')
+        ) AS expired
       FROM Users u
       WHERE EXISTS (SELECT 1 FROM Courses c WHERE c.userId = u.id)
     `
@@ -136,6 +152,7 @@ function buildOverview(): DashboardOverview {
     lastName: string;
     totalSessions: number;
     usedSessions: number;
+    expired: number;
   }>;
 
   const attentionUsers = attentionRows
@@ -145,18 +162,40 @@ function buildOverview(): DashboardOverview {
       lastName: row.lastName,
       totalSessions: row.totalSessions,
       remainingSessions: Math.max(0, row.totalSessions - row.usedSessions),
+      expired: Boolean(row.expired),
     }))
-    .filter((row) => row.totalSessions > 0 && row.remainingSessions <= 2)
+    .filter(
+      (row) =>
+        row.expired || (row.totalSessions > 0 && row.remainingSessions <= 2)
+    )
     .sort((a, b) => a.remainingSessions - b.remainingSessions)
     .slice(0, 8);
+
+  const rooms = RoomModel.list();
+  const roomOccupancy = rooms.map((room) => {
+    const booked = todaySessions.filter(
+      (session) =>
+        session.roomName === room.name && occupiesSlot(session.status, session.used)
+    ).length;
+    const present = todaySessions.filter(
+      (session) => session.roomName === room.name && session.status === "present"
+    ).length;
+    return {
+      roomId: room.id,
+      name: room.name,
+      color: room.color,
+      capacity: room.capacity,
+      booked,
+      present,
+    };
+  });
 
   const stats: DashboardStats = {
     activeUsers,
     weeklySessions,
     monthlyRevenue,
     todayCount: todaySessions.length,
-    attendedToday: todaySessions.filter((session) => session.used === 1)
-      .length,
+    attendedToday: todaySessions.filter((session) => session.used === 1).length,
     remainingSessions,
   };
 
@@ -167,16 +206,11 @@ function buildOverview(): DashboardOverview {
     recentAttendance: SessionModel.findRecentUsed(8).map(toItem),
     weeklyBreakdown,
     attentionUsers,
+    roomOccupancy,
   };
 }
 
 export function registerDashboardHandlers() {
-  ipcMain.handle(
-    "dashboard:getStats",
-    (): DashboardStats => buildOverview().stats
-  );
-  ipcMain.handle(
-    "dashboard:getOverview",
-    (): DashboardOverview => buildOverview()
-  );
+  ipcMain.handle("dashboard:getStats", (): DashboardStats => buildOverview().stats);
+  ipcMain.handle("dashboard:getOverview", (): DashboardOverview => buildOverview());
 }

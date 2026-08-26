@@ -26,6 +26,8 @@ export default function Settings() {
   const [busy, setBusy] = useState(false);
   const [tolerance, setTolerance] = useState(20);
   const [restoreOpen, setRestoreOpen] = useState(false);
+  const [lockEnabled, setLockEnabled] = useState(false);
+  const [pin, setPin] = useState("");
   const ping = useRfidStatus();
 
   const load = async () => {
@@ -35,6 +37,7 @@ export default function Settings() {
     setPorts(list ?? []);
     setSelected(current ?? "");
     setTolerance(settings?.attendanceToleranceMinutes ?? 20);
+    setLockEnabled(Boolean(settings?.lockEnabled));
   };
 
   useEffect(() => {
@@ -149,6 +152,48 @@ export default function Settings() {
 
       <section className="surface-card rounded-3xl p-6 space-y-4">
         <div className="flex items-center gap-2 font-semibold text-ink">
+          قفل برنامه
+        </div>
+        <p className="text-sm text-muted">
+          برای میز منشی، ورود با رمز ۴ رقمی از خواندن داده‌ها توسط دیگران جلوگیری می‌کند.
+        </p>
+        <input
+          type="password"
+          inputMode="numeric"
+          value={pin}
+          onChange={(e) => setPin(e.target.value)}
+          placeholder="رمز جدید"
+          className="w-full rounded-2xl border border-line px-3 py-2.5"
+        />
+        <div className="flex flex-wrap gap-2">
+          <button
+            className="btn btn-primary"
+            onClick={async () => {
+              await window.electronAPI?.settingsSetPin(pin);
+              setPin("");
+              setLockEnabled(true);
+              toast.success("رمز ذخیره شد");
+            }}
+          >
+            ذخیره رمز
+          </button>
+          {lockEnabled && (
+            <button
+              className="btn btn-ghost"
+              onClick={async () => {
+                await window.electronAPI?.settingsClearPin();
+                setLockEnabled(false);
+                toast.success("قفل برداشته شد");
+              }}
+            >
+              حذف قفل
+            </button>
+          )}
+        </div>
+      </section>
+
+      <section className="surface-card rounded-3xl p-6 space-y-4">
+        <div className="flex items-center gap-2 font-semibold text-ink">
           <Clock size={18} /> بازه ثبت حضور
         </div>
         <p className="text-sm text-muted">
@@ -214,6 +259,7 @@ export default function Settings() {
           <Shortcut keys="Ctrl + K" label="جستجوی سراسری" />
           <Shortcut keys="Ctrl + N" label="مشتری جدید" />
           <Shortcut keys="Esc" label="بستن پنجره و پالت" />
+          <Shortcut keys="Ctrl + Shift + K" label="کیوسک حضور" />
         </div>
       </section>
 

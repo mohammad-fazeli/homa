@@ -1,3 +1,12 @@
+export type SessionStatus =
+  | "scheduled"
+  | "present"
+  | "absent"
+  | "cancelled"
+  | "makeup";
+
+export type PaymentMethod = "cash" | "card" | "transfer";
+
 export interface UserAttributes {
   id: number;
   firstName: string;
@@ -5,6 +14,7 @@ export interface UserAttributes {
   phone: string;
   nationalId: string;
   uidCart: string;
+  notes?: string | null;
 }
 
 export type UserCreateInput = Omit<UserAttributes, "id">;
@@ -16,6 +26,12 @@ export interface CourseAttributes {
   userId: number;
   cost: number;
   sessions: number;
+  title?: string | null;
+  roomId?: number | null;
+  instructorId?: number | null;
+  templateId?: number | null;
+  expiresAt?: string | Date | null;
+  notes?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -29,12 +45,29 @@ export type CourseResult = CourseAttributes;
 
 export type CourseUpdateInput = CourseAttributes;
 
+export interface CourseWriteInput {
+  id?: number;
+  cost: number;
+  sessions: number;
+  title?: string | null;
+  roomId?: number | null;
+  instructorId?: number | null;
+  templateId?: number | null;
+  expiresAt?: string | null;
+  notes?: string | null;
+  paidNow?: boolean;
+}
+
 export interface SessionAttributes {
   id: number;
   courseId: number;
   date: string | Date;
   used: 0 | 1;
   usedAt: string | Date | null;
+  status?: SessionStatus;
+  roomId?: number | null;
+  instructorId?: number | null;
+  notes?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -50,6 +83,13 @@ export type SessionResult = SessionAttributes & {
   userId: number;
   title: string;
   start: Date;
+  status: SessionStatus;
+  roomId: number | null;
+  instructorId: number | null;
+  courseTitle: string;
+  roomName: string | null;
+  roomColor: string | null;
+  instructorName: string | null;
 };
 
 export interface NextSessionInfo {
@@ -62,6 +102,8 @@ export interface UserCourseSummary {
   cost: number;
   totalSessions: number;
   nextSessionDate: string | Date | null;
+  title?: string | null;
+  roomName?: string | null;
 }
 
 export interface UserFindAllItem {
@@ -74,6 +116,10 @@ export interface UserFindAllItem {
   usedSessions: number;
   remainingSessions: number;
   hasCard: boolean;
+  courseTitle: string;
+  roomName: string | null;
+  debt: number;
+  expired: boolean;
 }
 
 export interface UserFindAllResult {
@@ -89,12 +135,26 @@ export interface UserCourseSessionItem {
   date: string | Date;
   used: 0 | 1;
   usedAt: string | Date | null;
+  status: SessionStatus;
+  roomId: number | null;
+  instructorId: number | null;
 }
 
 export interface UserCourseDetail {
   id: number;
   cost: number;
   totalSessions: number;
+  title: string;
+  roomId: number | null;
+  instructorId: number | null;
+  templateId: number | null;
+  expiresAt: string | Date | null;
+  notes: string | null;
+  roomName: string | null;
+  roomColor: string | null;
+  instructorName: string | null;
+  paidAmount: number;
+  debt: number;
   createdAt?: string | Date;
   sessions: UserCourseSessionItem[];
 }
@@ -106,17 +166,27 @@ export interface UserFindByIdResult {
   phone: string;
   nationalId: string;
   uidCart: string;
+  notes: string | null;
   course: UserCourseDetail | null;
   courses: UserCourseDetail[];
+  debt: number;
 }
 
-export type UserListFilter = "all" | "no_card" | "low_credit" | "today";
+export type UserListFilter =
+  | "all"
+  | "no_card"
+  | "low_credit"
+  | "today"
+  | "expired"
+  | "debt";
 
 export interface UserFilterCounts {
   all: number;
   no_card: number;
   low_credit: number;
   today: number;
+  expired: number;
+  debt: number;
 }
 
 export interface UseSessionResult {
@@ -143,23 +213,101 @@ export interface RfidPortInfo {
 export interface AppSettings {
   rfidPort?: string;
   attendanceToleranceMinutes?: number;
+  lockEnabled?: boolean;
+  lockPinHash?: string;
 }
+
+export interface RoomAttributes {
+  id: number;
+  name: string;
+  color: string;
+  capacity: number;
+  notes: string | null;
+}
+
+export type RoomWriteInput = {
+  id?: number;
+  name: string;
+  color: string;
+  capacity: number;
+  notes?: string | null;
+};
+
+export interface InstructorAttributes {
+  id: number;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+  color: string;
+  notes: string | null;
+}
+
+export type InstructorWriteInput = {
+  id?: number;
+  firstName: string;
+  lastName: string;
+  phone?: string | null;
+  color: string;
+  notes?: string | null;
+};
+
+export interface CourseTemplateAttributes {
+  id: number;
+  name: string;
+  sessions: number;
+  cost: number;
+  durationMinutes: number;
+}
+
+export type CourseTemplateWriteInput = {
+  id?: number;
+  name: string;
+  sessions: number;
+  cost: number;
+  durationMinutes?: number;
+};
+
+export interface PaymentAttributes {
+  id: number;
+  userId: number;
+  courseId: number | null;
+  amount: number;
+  method: PaymentMethod;
+  note: string | null;
+  paidAt: string;
+  userFullName?: string;
+  courseTitle?: string | null;
+}
+
+export type PaymentCreateInput = {
+  userId: number;
+  courseId?: number | null;
+  amount: number;
+  method: PaymentMethod;
+  note?: string | null;
+  paidAt?: string;
+};
 
 export interface BillingSummary {
   totalUsers: number;
   totalCourses: number;
   totalRevenue: number;
+  totalCollected: number;
+  totalOutstanding: number;
   avgCoursePrice: number;
 }
 
 export interface RevenueByMonthItem {
   month: string;
   revenue: number;
+  collected: number;
 }
 
 export interface SessionStats {
   used: number;
   remaining: number;
+  absent: number;
+  cancelled: number;
 }
 
 export interface BillingLogItem {
@@ -186,6 +334,11 @@ export interface DashboardSessionItem {
   date: string;
   used: 0 | 1;
   usedAt: string | Date | null;
+  status: SessionStatus;
+  roomName: string | null;
+  roomColor: string | null;
+  instructorName: string | null;
+  courseTitle: string;
 }
 
 export interface DashboardAttentionUser {
@@ -194,6 +347,16 @@ export interface DashboardAttentionUser {
   lastName: string;
   remainingSessions: number;
   totalSessions: number;
+  expired?: boolean;
+}
+
+export interface RoomOccupancyItem {
+  roomId: number;
+  name: string;
+  color: string;
+  capacity: number;
+  booked: number;
+  present: number;
 }
 
 export interface WeeklyBreakdownItem {
@@ -210,6 +373,7 @@ export interface DashboardOverview {
   recentAttendance: DashboardSessionItem[];
   weeklyBreakdown: WeeklyBreakdownItem[];
   attentionUsers: DashboardAttentionUser[];
+  roomOccupancy: RoomOccupancyItem[];
 }
 
 export interface WeeklySessionItem {
@@ -225,4 +389,10 @@ export interface MonthlyIncomeItem {
 export interface AppConnectionStatus {
   status: "online";
   timestamp: number;
+}
+
+export interface AcademySnapshot {
+  rooms: RoomAttributes[];
+  instructors: InstructorAttributes[];
+  templates: CourseTemplateAttributes[];
 }

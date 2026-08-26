@@ -7,6 +7,7 @@ import {
   UserFindByIdResult,
   UserListFilter,
   UserUpdateInput,
+  CourseWriteInput,
 } from "../global";
 import { emitAppDataChange } from "../lib/bus";
 
@@ -43,17 +44,17 @@ interface UsersStore {
   getUser: (id: number) => Promise<void>;
   addUser: (
     user: UserCreateInput,
-    course?: { cost: number; sessions: number },
+    course?: CourseWriteInput,
     sessions?: string[]
   ) => Promise<void>;
   updateUser: (
     user: UserUpdateInput,
-    course?: { cost: number; sessions: number; id: number },
+    course?: CourseWriteInput & { id: number },
     sessions?: SessionUpdateInput[]
   ) => Promise<void>;
   saveCourse: (
     userId: number,
-    course: { cost: number; sessions: number; id?: number },
+    course: CourseWriteInput,
     sessions?: SessionUpdateInput[]
   ) => Promise<void>;
   deleteCourse: (courseId: number) => Promise<void>;
@@ -68,7 +69,14 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
   total: 0,
   query: "",
   filter: "all",
-  filterCounts: { all: 0, no_card: 0, low_credit: 0, today: 0 },
+  filterCounts: {
+    all: 0,
+    no_card: 0,
+    low_credit: 0,
+    today: 0,
+    expired: 0,
+    debt: 0,
+  },
   limit: 10,
   page: 1,
   totalPages: 1,

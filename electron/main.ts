@@ -9,6 +9,7 @@ import { registerBillingHandlers } from "./ipc/billing";
 import { registerDashboardHandlers } from "./ipc/dashboard";
 import { registerBackupHandlers } from "./ipc/backup";
 import { registerSettingsHandlers } from "./ipc/settings";
+import { registerAcademyHandlers } from "./ipc/academy";
 
 dotenv.config();
 
@@ -90,6 +91,7 @@ app.whenReady().then(() => {
   registerRfidIpc();
   registerBackupHandlers();
   registerSettingsHandlers();
+  registerAcademyHandlers();
   createWindow();
 });
 

@@ -17,6 +17,8 @@ const FILTERS: Array<{ id: UserListFilter; label: string }> = [
   { id: "today", label: "جلسه امروز" },
   { id: "low_credit", label: "اعتبار کم" },
   { id: "no_card", label: "بدون کارت" },
+  { id: "expired", label: "منقضی" },
+  { id: "debt", label: "بدهکار" },
 ];
 
 export default function Users() {

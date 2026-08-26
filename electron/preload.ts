@@ -82,6 +82,29 @@ contextBridge.exposeInMainWorld("electronAPI", {
   settingsGet: () => ipcRenderer.invoke("settings:get"),
   settingsSet: (partial: AppSettings) =>
     ipcRenderer.invoke("settings:set", partial),
+  settingsSetPin: (pin: string) => ipcRenderer.invoke("settings:setPin", pin),
+  settingsClearPin: () => ipcRenderer.invoke("settings:clearPin"),
+  settingsVerifyPin: (pin: string) =>
+    ipcRenderer.invoke("settings:verifyPin", pin),
+  academySnapshot: () => ipcRenderer.invoke("academy:snapshot"),
+  academySaveRoom: (data: any) => ipcRenderer.invoke("academy:saveRoom", data),
+  academyDeleteRoom: (id: number) => ipcRenderer.invoke("academy:deleteRoom", id),
+  academySaveInstructor: (data: any) =>
+    ipcRenderer.invoke("academy:saveInstructor", data),
+  academyDeleteInstructor: (id: number) =>
+    ipcRenderer.invoke("academy:deleteInstructor", id),
+  academySaveTemplate: (data: any) =>
+    ipcRenderer.invoke("academy:saveTemplate", data),
+  academyDeleteTemplate: (id: number) =>
+    ipcRenderer.invoke("academy:deleteTemplate", id),
+  billingListPayments: (limit?: number, userId?: number) =>
+    ipcRenderer.invoke("billing:listPayments", limit, userId),
+  billingCreatePayment: (data: any) =>
+    ipcRenderer.invoke("billing:createPayment", data),
+  billingDeletePayment: (id: number) =>
+    ipcRenderer.invoke("billing:deletePayment", id),
+  setSessionStatus: (sessionId: number, status: string) =>
+    ipcRenderer.invoke("set-session-status", sessionId, status),
   ipcRenderer: {
     on: (channel: string, listener: (...args: any[]) => void) => {
       if (!RFID_CHANNELS.has(channel)) return;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isValidNationalId, isValidPhone } from "../../shared/validation";
 import { parseFlexibleDate, sameHour } from "../../shared/dates";
-import { resolveRfidSession, hasHourConflict } from "./session-match";
+import { resolveRfidSession, hasHourConflict, countRoomOccupancy } from "./session-match";
 
 describe("validation", () => {
   it("accepts a valid mobile number", () => {
@@ -64,6 +64,18 @@ describe("rfid session match", () => {
     expect(tight.status).toBe("out_of_tolerance");
     const wide = resolveRfidSession(sessions, later, { toleranceMinutes: 60 });
     expect(wide.status).toBe("ok");
+  });
+});
+
+describe("room occupancy", () => {
+  it("counts students in the same room and hour", () => {
+    const existing = [
+      { id: 1, date: new Date(2026, 7, 25, 10, 0, 0).toISOString(), roomId: 1, status: "scheduled" as const, used: 0 as const },
+      { id: 2, date: new Date(2026, 7, 25, 10, 0, 0).toISOString(), roomId: 1, status: "present" as const, used: 1 as const },
+      { id: 3, date: new Date(2026, 7, 25, 10, 0, 0).toISOString(), roomId: 2, status: "scheduled" as const, used: 0 as const },
+    ];
+    expect(countRoomOccupancy(existing, new Date(2026, 7, 25, 10, 0, 0), 1)).toBe(2);
+    expect(countRoomOccupancy(existing, new Date(2026, 7, 25, 10, 0, 0), 2)).toBe(1);
   });
 });
 
