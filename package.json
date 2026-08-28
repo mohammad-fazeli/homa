@@ -8,11 +8,13 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:renderer\" \"npm run dev:electron\"",
     "dev:renderer": "cd renderer && vite",
-    "dev:electron": "wait-on http://localhost:5173 && npm run electron:start",
+    "dev:electron": "wait-on http://127.0.0.1:5173 && npm run electron:start",
     "electron:start": "tsc -p electron && electron dist-electron/electron/main.js",
     "build:renderer": "cd renderer && vite build",
     "build:electron": "tsc -p electron",
     "build": "npm run build:renderer && npm run build:electron",
+    "icon": "powershell -ExecutionPolicy Bypass -File scripts/make-icon.ps1",
+    "predist": "npm run icon",
     "dist": "npm run build && electron-builder",
     "postinstall": "electron-builder install-app-deps",
     "lint": "tsc -p electron --noEmit && tsc -p renderer --noEmit && eslint .",
@@ -22,8 +24,8 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "^4.1.17",
     "@fontsource/vazirmatn": "^5.2.8",
+    "@tailwindcss/postcss": "^4.1.17",
     "better-sqlite3": "^12.5.0",
     "dotenv": "^17.2.3",
     "framer-motion": "^12.23.24",
@@ -35,6 +37,7 @@
     "recharts": "^3.5.1",
     "serialport": "^13.0.0",
     "tailwindcss": "^4.1.17",
+    "xlsx": "^0.18.5",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
@@ -48,16 +51,17 @@
     "electron": "^32.0.1",
     "electron-builder": "^24.13.3",
     "eslint": "^9.17.0",
-    "typescript-eslint": "^8.18.0",
-    "vitest": "^2.1.8",
     "postcss": "^8.5.6",
     "typescript": "^5.5.4",
+    "typescript-eslint": "^8.18.0",
     "vite": "^5.4.1",
+    "vitest": "^2.1.8",
     "wait-on": "^7.2.0"
   },
   "build": {
     "appId": "com.homa.studentmanager",
     "productName": "هما",
+    "icon": "build/icon.png",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -78,6 +82,7 @@
     ],
     "win": {
       "icon": "build/icon.png",
+      "executableName": "Homa",
       "signAndEditExecutable": false,
       "target": [
         "nsis"

@@ -55,6 +55,7 @@ export const RoomModel = {
   delete(id: number) {
     db.prepare(`UPDATE Courses SET roomId = NULL WHERE roomId = ?`).run(id);
     db.prepare(`UPDATE Sessions SET roomId = NULL WHERE roomId = ?`).run(id);
+    db.prepare(`UPDATE ClassGroups SET roomId = NULL WHERE roomId = ?`).run(id);
     return db.prepare(`DELETE FROM Rooms WHERE id = ?`).run(id).changes;
   },
 };

@@ -64,6 +64,9 @@ export const CourseTemplateModel = {
     db.prepare(`UPDATE Courses SET templateId = NULL WHERE templateId = ?`).run(
       id
     );
+    db.prepare(
+      `UPDATE ClassGroups SET templateId = NULL WHERE templateId = ?`
+    ).run(id);
     return db.prepare(`DELETE FROM CourseTemplates WHERE id = ?`).run(id).changes;
   },
 };

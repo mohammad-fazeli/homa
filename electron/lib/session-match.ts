@@ -125,16 +125,24 @@ export function isInstructorBusy(
   existing: OccupancySession[],
   candidate: string | Date,
   instructorId: number | null | undefined,
-  excludeIds: number[] = []
+  excludeIds: number[] = [],
+  candidateRoomId?: number | null
 ): boolean {
   if (!instructorId) return false;
   const target = new Date(candidate);
   if (Number.isNaN(target.getTime())) return false;
-  return existing.some(
-    (item) =>
-      !excludeIds.includes(item.id) &&
-      item.instructorId === instructorId &&
-      occupiesSlot(item.status, item.used) &&
-      sameHour(new Date(item.date), target)
-  );
+  return existing.some((item) => {
+    if (excludeIds.includes(item.id)) return false;
+    if (item.instructorId !== instructorId) return false;
+    if (!occupiesSlot(item.status, item.used)) return false;
+    if (!sameHour(new Date(item.date), target)) return false;
+    if (
+      candidateRoomId != null &&
+      item.roomId != null &&
+      item.roomId === candidateRoomId
+    ) {
+      return false;
+    }
+    return true;
+  });
 }

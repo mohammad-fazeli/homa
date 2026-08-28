@@ -10,6 +10,7 @@ import {
   Monitor,
   Wifi,
   WifiOff,
+  Bell,
 } from "lucide-react";
 import { useRfidStatus } from "./useRfidStatus";
 
@@ -19,6 +20,7 @@ const items = [
   { name: "تقویم جلسات", path: "/sessions", icon: CalendarDays },
   { name: "مالی", path: "/billing", icon: Wallet },
   { name: "آموزشگاه", path: "/academy", icon: School },
+  { name: "یادآوری‌ها", path: "/reminders", icon: Bell },
   { name: "کیوسک", path: "/kiosk", icon: Monitor },
   { name: "تنظیمات", path: "/settings", icon: Settings },
 ];

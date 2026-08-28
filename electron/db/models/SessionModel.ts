@@ -14,6 +14,7 @@ import { normalizeStatus, usedFromStatus } from "../../../shared/session";
 import { RoomModel } from "./RoomModel";
 import { CourseModel } from "./CourseModel";
 import { InstructorModel } from "./InstructorModel";
+import { HolidayModel } from "./HolidayModel";
 
 const SESSION_SELECT = `
   SELECT
@@ -120,8 +121,10 @@ export const SessionModel = {
       roomId?: number | null;
       instructorId?: number | null;
       excludeIds?: number[];
+      ignoreClosedDates?: Array<string | Date>;
     } = {}
   ) {
+    this.assertOpenDates(dates, options.ignoreClosedDates);
     const existing = this.listOccupancy();
     const excludeIds = options.excludeIds ?? [];
     const room = options.roomId ? RoomModel.findById(options.roomId) : null;
@@ -143,7 +146,13 @@ export const SessionModel = {
           );
         }
       }
-      if (instructor && isInstructorBusy(existing, date, instructor.id, excludeIds)) {
+      if (instructor && isInstructorBusy(
+        existing,
+        date,
+        instructor.id,
+        excludeIds,
+        options.roomId ?? null
+      )) {
         throw new Error(
           `مربی ${instructor.firstName} ${instructor.lastName} در این ساعت کلاس دیگری دارد`
         );
@@ -151,13 +160,19 @@ export const SessionModel = {
     }
   },
 
+  assertOpenDates(
+    dates: Array<string | Date>,
+    ignoreClosedDates?: Array<string | Date>
+  ) {
+    HolidayModel.assertOpenDates(dates, { ignoreDates: ignoreClosedDates });
+  },
+
   update(courseId: number, data: SessionUpdateInput[]) {
     const course = CourseModel.findById(courseId);
-    const existingIds = (
-      db
-        .prepare(`SELECT id FROM Sessions WHERE courseId = ?`)
-        .all(courseId) as Array<{ id: number }>
-    ).map((row) => row.id);
+    const existingRows = db
+      .prepare(`SELECT id, date FROM Sessions WHERE courseId = ?`)
+      .all(courseId) as Array<{ id: number; date: string }>;
+    const existingIds = existingRows.map((row) => row.id);
 
     this.assertSlotAvailable(
       data.map((session) => session.date),
@@ -165,6 +180,7 @@ export const SessionModel = {
         roomId: course?.roomId ?? null,
         instructorId: course?.instructorId ?? null,
         excludeIds: existingIds,
+        ignoreClosedDates: existingRows.map((row) => row.date),
       }
     );
 

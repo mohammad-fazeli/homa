@@ -74,6 +74,7 @@ function resultForSession(
     code,
     sessionId,
     userName,
+    photoUrl: user.photoUrl ?? null,
     ...countsForUser(user, extraUsedId, extraUnusedId),
   };
 }
@@ -95,7 +96,7 @@ function normalizeUser<T extends { phone: string; nationalId: string }>(user: T)
   };
 }
 
-function saveCourseForUser(
+export function saveCourseForUser(
   userId: number,
   course: CourseWriteInput,
   sessions?: SessionUpdateInput[] | string[]
@@ -112,6 +113,7 @@ function saveCourseForUser(
     templateId: course.templateId,
     expiresAt: course.expiresAt,
     notes: course.notes,
+    groupId: course.groupId,
   };
 
   if (!existingCourse) {

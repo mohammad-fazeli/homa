@@ -1,16 +1,24 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import * as path from "path";
 import dotenv from "dotenv";
 import { registerUserHandlers } from "./ipc/users";
-import { initDatabase } from "./db";
+import { closeDatabase, initDatabase } from "./db";
 import { registerRfidHandlers, registerRfidIpc, stopRfid } from "./ipc/rfid";
 import { registerCalendarHandlers } from "./ipc/calendar";
 import { registerBillingHandlers } from "./ipc/billing";
 import { registerDashboardHandlers } from "./ipc/dashboard";
 import { registerBackupHandlers } from "./ipc/backup";
+import { startAutoBackupScheduler, stopAutoBackupScheduler } from "./lib/auto-backup";
 import { registerSettingsHandlers } from "./ipc/settings";
 import { registerAcademyHandlers } from "./ipc/academy";
+import { registerReminderHandlers } from "./ipc/reminders";
+import { registerImportHandlers } from "./ipc/import-customers";
+import { registerPhotoHandlers } from "./ipc/photos";
+import { registerPhotoScheme, registerPhotoProtocol } from "./lib/photo-protocol";
 
+registerPhotoScheme();
+app.setAppUserModelId("com.homa.studentmanager");
+dotenv.config({ path: path.join(app.getPath("userData"), ".env") });
 dotenv.config();
 
 const isDev = !app.isPackaged;
@@ -59,10 +67,10 @@ function createWindow() {
   win.once("ready-to-show", () => win.show());
 
   if (isDev) {
-    win.loadURL("http://localhost:5173");
+    win.loadURL("http://127.0.0.1:5173");
     win.webContents.openDevTools({ mode: "detach" });
   } else {
-    win.loadFile(path.join(__dirname, "../../renderer/dist/index.html"));
+    win.loadFile(path.join(app.getAppPath(), "renderer", "dist", "index.html"));
     win.removeMenu();
     win.webContents.on("devtools-opened", () => {
       win.webContents.closeDevTools();
@@ -81,19 +89,48 @@ function createWindow() {
   registerRfidHandlers(win);
 }
 
-app.whenReady().then(() => {
-  initDatabase();
-  registerWindowHandlers();
-  registerUserHandlers();
-  registerCalendarHandlers();
-  registerBillingHandlers();
-  registerDashboardHandlers();
-  registerRfidIpc();
-  registerBackupHandlers();
-  registerSettingsHandlers();
-  registerAcademyHandlers();
-  createWindow();
-});
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    const win = getMainWindow();
+    if (!win) return;
+    if (win.isMinimized()) win.restore();
+    win.show();
+    win.focus();
+  });
+
+  app.whenReady().then(() => {
+    try {
+      initDatabase();
+    } catch (err) {
+      dialog.showErrorBox(
+        "هما",
+        err instanceof Error
+          ? `باز کردن پایگاه داده ممکن نشد.\n${err.message}`
+          : "باز کردن پایگاه داده ممکن نشد."
+      );
+      app.quit();
+      return;
+    }
+    registerWindowHandlers();
+    registerUserHandlers();
+    registerCalendarHandlers();
+    registerBillingHandlers();
+    registerDashboardHandlers();
+    registerRfidIpc();
+    registerBackupHandlers();
+    registerSettingsHandlers();
+    registerAcademyHandlers();
+    registerReminderHandlers();
+    registerImportHandlers();
+    registerPhotoHandlers();
+    registerPhotoProtocol();
+    startAutoBackupScheduler();
+    createWindow();
+  });
+}
 
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -105,4 +142,6 @@ app.on("window-all-closed", () => {
 
 app.on("before-quit", () => {
   stopRfid();
+  stopAutoBackupScheduler();
+  closeDatabase();
 });

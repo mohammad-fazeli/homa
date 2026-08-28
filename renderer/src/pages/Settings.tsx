@@ -10,13 +10,29 @@ import {
   Keyboard,
   Clock,
   Download,
+  Bell,
+  FileSpreadsheet,
+  FolderOpen,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import Modal from "../components/Modal";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { exportCsv, stampFile } from "../lib/csv";
 import { formatDateTime, formatMoney } from "../lib/format";
+import { AUTO_BACKUP_KEEP_OPTIONS } from "@shared/backup";
+import type { AutoBackupStatus } from "../global";
 
 const TOLERANCE_OPTIONS = [5, 10, 15, 20, 30, 45, 60];
+
+const EMPTY_BACKUP: AutoBackupStatus = {
+  enabled: false,
+  folder: "",
+  folderMissing: false,
+  keep: 14,
+  lastAt: "",
+  lastPath: "",
+  lastError: "",
+};
 
 export default function Settings() {
   const [ports, setPorts] = useState<
@@ -28,16 +44,21 @@ export default function Settings() {
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [lockEnabled, setLockEnabled] = useState(false);
   const [pin, setPin] = useState("");
+  const [academyName, setAcademyName] = useState("هما");
+  const [backup, setBackup] = useState<AutoBackupStatus>(EMPTY_BACKUP);
   const ping = useRfidStatus();
 
   const load = async () => {
     const list = await window.electronAPI?.rfidListPorts();
     const current = await window.electronAPI?.rfidGetPort();
     const settings = await window.electronAPI?.settingsGet();
+    const auto = await window.electronAPI?.dbAutoBackupStatus();
     setPorts(list ?? []);
     setSelected(current ?? "");
     setTolerance(settings?.attendanceToleranceMinutes ?? 20);
     setLockEnabled(Boolean(settings?.lockEnabled));
+    setAcademyName(settings?.academyName ?? "هما");
+    if (auto) setBackup(auto);
   };
 
   useEffect(() => {
@@ -98,8 +119,37 @@ export default function Settings() {
       <PageHeader
         eyebrow="سامانه"
         title="تنظیمات"
-        description="اتصال کارت‌خوان، بازه حضور، پشتیبان‌گیری و میانبرها."
+        description="اتصال کارت‌خوان، بازه حضور، پشتیبان روزانه و میانبرها."
       />
+
+      <section className="surface-card rounded-3xl p-6 space-y-4">
+        <div className="flex items-center gap-2 font-semibold text-ink">
+          <Bell size={18} /> یادآوری پیامک و واتساپ
+        </div>
+        <p className="text-sm text-muted">
+          نام آموزشگاه در متن پیام‌ها می‌آید. ارسال از صفحهٔ یادآوری‌ها با واتساپ یا پیامک سیستم انجام می‌شود.
+        </p>
+        <input
+          className="w-full rounded-2xl border border-line px-3 py-2.5"
+          value={academyName}
+          onChange={(e) => setAcademyName(e.target.value)}
+          placeholder="نام آموزشگاه"
+        />
+        <div className="flex flex-wrap gap-2">
+          <button
+            className="btn btn-primary"
+            onClick={async () => {
+              await window.electronAPI?.settingsSet({ academyName });
+              toast.success("نام آموزشگاه ذخیره شد");
+            }}
+          >
+            ذخیره نام
+          </button>
+          <Link to="/reminders" className="btn btn-ghost">
+            صفحهٔ یادآوری‌ها
+          </Link>
+        </div>
+      </section>
 
       <section className="surface-card rounded-3xl p-6 space-y-4">
         <div className="flex items-center justify-between">
@@ -242,6 +292,7 @@ export default function Settings() {
         </div>
         <p className="text-sm text-muted">
           پیش از بازیابی، از داده‌های فعلی نسخهٔ پشتیبان بگیرید. بازیابی همه چیز را جایگزین می‌کند.
+          ورود Excel مشتریان قدیمی را از همین بخش یا صفحهٔ مشتریان شروع کنید.
         </p>
         <div className="flex flex-wrap gap-2">
           <button
@@ -259,9 +310,133 @@ export default function Settings() {
           <button className="btn btn-ghost" onClick={() => void exportCustomers()}>
             <Download size={16} /> خروجی مشتریان
           </button>
+          <Link to="/users?import=1" className="btn btn-ghost">
+            <FileSpreadsheet size={16} /> ورود Excel
+          </Link>
           <button className="btn btn-ghost" onClick={() => void exportBilling()}>
             <Download size={16} /> خروجی مالی
           </button>
+        </div>
+
+        <div className="border-t border-line pt-4 space-y-3">
+          <div className="flex items-center gap-2 font-medium text-ink">
+            <FolderOpen size={16} /> پشتیبان خودکار روزانه
+          </div>
+          <p className="text-sm text-muted leading-6">
+            با باز بودن برنامه، هر روز یک فایل در پوشهٔ انتخابی نوشته می‌شود و نسخهٔ همان
+            روز در طول روز به‌روز می‌شود. فقط فایل‌های روزانهٔ هما پاک می‌شوند؛ پشتیبان
+            دستی سر جایش می‌ماند.
+          </p>
+          {backup.folder ? (
+            <p className="text-xs text-muted break-all" dir="ltr">
+              {backup.folder}
+            </p>
+          ) : (
+            <p className="text-sm text-muted">هنوز پوشه‌ای انتخاب نشده است.</p>
+          )}
+          {backup.folderMissing && (
+            <p className="text-sm text-danger">
+              پوشه پیدا نشد. یک پوشهٔ جدید انتخاب کنید.
+            </p>
+          )}
+          {backup.lastError && (
+            <p className="text-sm text-danger">{backup.lastError}</p>
+          )}
+          <p className="text-sm text-muted">
+            {backup.lastAt
+              ? `آخرین پشتیبان روزانه: ${formatDateTime(backup.lastAt)}`
+              : "هنوز پشتیبان روزانه گرفته نشده است."}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={`chip ${backup.enabled ? "chip-on" : ""}`}
+              onClick={async () => {
+                try {
+                  await window.electronAPI?.settingsSet({
+                    autoBackupEnabled: !backup.enabled,
+                  });
+                  toast.success(
+                    backup.enabled
+                      ? "پشتیبان روزانه خاموش شد"
+                      : "پشتیبان روزانه روشن شد"
+                  );
+                  await load();
+                } catch (err) {
+                  toast.error(
+                    err instanceof Error ? err.message : "ذخیره ناموفق بود"
+                  );
+                }
+              }}
+            >
+              {backup.enabled ? "روشن" : "خاموش"}
+            </button>
+            {AUTO_BACKUP_KEEP_OPTIONS.map((days) => (
+              <button
+                key={days}
+                type="button"
+                className={`chip ${backup.keep === days ? "chip-on" : ""}`}
+                onClick={async () => {
+                  await window.electronAPI?.settingsSet({ autoBackupKeep: days });
+                  toast.success(
+                    `${days.toLocaleString("fa-IR")} نسخهٔ اخیر نگه داشته می‌شود`
+                  );
+                  await load();
+                }}
+              >
+                {days.toLocaleString("fa-IR")} روز
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  const result = await window.electronAPI?.dbChooseBackupFolder();
+                  if (result?.cancelled) return;
+                  toast.success("پوشه ذخیره شد");
+                  await load();
+                } catch (err) {
+                  toast.error(
+                    err instanceof Error ? err.message : "انتخاب پوشه ناموفق بود"
+                  );
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              انتخاب پوشه
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={busy || !backup.folder}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  const result = await window.electronAPI?.dbRunAutoBackup();
+                  if (result?.ok && !result.skipped) {
+                    toast.success("پشتیبان روزانه ذخیره شد");
+                  } else if (result?.error) {
+                    toast.error(result.error);
+                  }
+                  await load();
+                } catch (err) {
+                  toast.error(
+                    err instanceof Error ? err.message : "پشتیبان ناموفق بود"
+                  );
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              گرفتن پشتیبان در پوشه
+            </button>
+          </div>
         </div>
       </section>
 
@@ -294,9 +469,18 @@ export default function Settings() {
             confirmLabel="بازیابی"
             onCancel={() => setRestoreOpen(false)}
             onConfirm={async () => {
-              const result = await window.electronAPI?.dbRestore();
-              setRestoreOpen(false);
-              if (result?.ok) toast.success("دیتابیس بازیابی شد");
+              try {
+                const result = await window.electronAPI?.dbRestore();
+                setRestoreOpen(false);
+                if (result?.ok) {
+                  toast.success("دیتابیس بازیابی شد");
+                  window.setTimeout(() => window.location.reload(), 400);
+                }
+              } catch (err) {
+                toast.error(
+                  err instanceof Error ? err.message : "بازیابی ناموفق بود"
+                );
+              }
             }}
           />
         </Modal>

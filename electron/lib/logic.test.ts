@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isValidNationalId, isValidPhone } from "../../shared/validation";
 import { parseFlexibleDate, sameHour } from "../../shared/dates";
-import { resolveRfidSession, hasHourConflict, countRoomOccupancy } from "./session-match";
+import { resolveRfidSession, hasHourConflict, countRoomOccupancy, isInstructorBusy } from "./session-match";
 
 describe("validation", () => {
   it("accepts a valid mobile number", () => {
@@ -76,6 +76,28 @@ describe("room occupancy", () => {
     ];
     expect(countRoomOccupancy(existing, new Date(2026, 7, 25, 10, 0, 0), 1)).toBe(2);
     expect(countRoomOccupancy(existing, new Date(2026, 7, 25, 10, 0, 0), 2)).toBe(1);
+  });
+});
+
+describe("instructor conflict", () => {
+  const hour = new Date(2026, 7, 25, 10, 0, 0).toISOString();
+  const existing = [
+    {
+      id: 1,
+      date: hour,
+      roomId: 1,
+      instructorId: 9,
+      status: "scheduled" as const,
+      used: 0 as const,
+    },
+  ];
+
+  it("allows the same instructor in the same room (group class)", () => {
+    expect(isInstructorBusy(existing, hour, 9, [], 1)).toBe(false);
+  });
+
+  it("blocks the same instructor in a different room", () => {
+    expect(isInstructorBusy(existing, hour, 9, [], 2)).toBe(true);
   });
 });
 

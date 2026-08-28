@@ -2,7 +2,10 @@ import { useState, useMemo, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { useCalendarStore } from "../store/calendar";
+import { useAcademyStore } from "../store/academy";
+import { onAppDataChange } from "../lib/bus";
 import { userColor } from "../lib/format";
+import { closedDayLabel, holidayConflict } from "@shared/holidays";
 
 export type RecordItem = {
   id: number;
@@ -84,8 +87,17 @@ export default function WeeklyCalendar({
     getWeekStart(new Date())
   );
   const [peek, setPeek] = useState<CalendarEvent | null>(null);
+  const [closedNote, setClosedNote] = useState<string | null>(null);
   const { loadEvents, allEvents: storeEvents } = useCalendarStore();
   const [roomFilter, setRoomFilter] = useState<string>("all");
+  const holidays = useAcademyStore((s) => s.holidays);
+  const closedWeekdays = useAcademyStore((s) => s.closedWeekdays);
+  const loadAcademy = useAcademyStore((s) => s.load);
+
+  useEffect(() => {
+    void loadAcademy();
+    return onAppDataChange(() => void loadAcademy());
+  }, [loadAcademy]);
 
   useEffect(() => {
     const start = new Date(currentWeek);
@@ -95,19 +107,36 @@ export default function WeeklyCalendar({
   }, [currentWeek, loadEvents]);
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(currentWeek, i));
-  const nextWeek = () => setCurrentWeek(addDays(currentWeek, 7));
-  const prevWeek = () => setCurrentWeek(addDays(currentWeek, -7));
+  const nextWeek = () => {
+    setClosedNote(null);
+    setCurrentWeek(addDays(currentWeek, 7));
+  };
+  const prevWeek = () => {
+    setClosedNote(null);
+    setCurrentWeek(addDays(currentWeek, -7));
+  };
+
+  const closedHit = (date: Date) =>
+    holidayConflict(date, holidays ?? [], closedWeekdays ?? []);
 
   const handleCellClick = (day: Date, hour: number, events: CalendarEvent[]) => {
     const start = new Date(day);
     start.setHours(hour, 0, 0, 0);
     const ownEvent = events.find((ev) => ev.userId === currentUserId);
     if (ownEvent && onAddEvent) {
+      setClosedNote(null);
       onAddEvent(start);
       return;
     }
     if (events[0]) {
+      setClosedNote(null);
       setPeek(events[0]);
+      return;
+    }
+    const hit = closedHit(start);
+    if (hit) {
+      setPeek(null);
+      setClosedNote(closedDayLabel(hit));
       return;
     }
     onAddEvent?.(start);
@@ -199,7 +228,10 @@ export default function WeeklyCalendar({
           <button
             type="button"
             className="px-3 py-1.5 rounded-xl border border-line hover:bg-paper"
-            onClick={() => setCurrentWeek(getWeekStart(new Date()))}
+            onClick={() => {
+              setClosedNote(null);
+              setCurrentWeek(getWeekStart(new Date()));
+            }}
           >
             این هفته
           </button>
@@ -216,12 +248,21 @@ export default function WeeklyCalendar({
         <span className="inline-flex items-center gap-1">
           <span className="w-2.5 h-2.5 rounded-full bg-gold" /> رزرو دیگران
         </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="w-2.5 h-2.5 rounded-full bg-gold-soft ring-1 ring-gold" /> روز تعطیل
+        </span>
       </div>
 
       {isEmpty && (
         <p className="text-xs text-muted mb-3">
           این هفته خالی است. برای رزرو روی یک خانه ساعت کلیک کنید.
         </p>
+      )}
+
+      {closedNote && (
+        <div className="mb-3 rounded-2xl border border-gold bg-gold-soft px-4 py-3 text-sm text-ink">
+          این روز تعطیل آموزشگاه است — {closedNote}. رزرو جدید ساخته نمی‌شود.
+        </div>
       )}
 
       {peek && (
@@ -290,19 +331,29 @@ export default function WeeklyCalendar({
         <div className="bg-paper border-b border-l border-line p-2 text-center font-medium sticky right-0 z-20">
           ساعت
         </div>
-        {days.map((day, i) => (
-          <div
-            key={i}
-            className={`border-b border-l border-line p-2 text-center ${
-              isToday(day) ? "bg-brand-soft" : "bg-paper"
-            }`}
-          >
-            <div className="text-[11px] text-muted">{WEEKDAYS_FA[i]}</div>
-            <div className="text-[12px] font-semibold text-ink">
-              {day.toLocaleDateString("fa-IR", { month: "short", day: "numeric" })}
+        {days.map((day, i) => {
+          const dayClosed = closedHit(day);
+          return (
+            <div
+              key={i}
+              className={`border-b border-l border-line p-2 text-center ${
+                dayClosed
+                  ? "bg-gold-soft"
+                  : isToday(day)
+                    ? "bg-brand-soft"
+                    : "bg-paper"
+              }`}
+            >
+              <div className="text-[11px] text-muted">{WEEKDAYS_FA[i]}</div>
+              <div className="text-[12px] font-semibold text-ink">
+                {day.toLocaleDateString("fa-IR", { month: "short", day: "numeric" })}
+              </div>
+              {dayClosed && (
+                <div className="text-[10px] text-gold mt-0.5">تعطیل</div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {HOURS.map((hour) => (
           <div key={hour} className="contents">
@@ -322,13 +373,16 @@ export default function WeeklyCalendar({
                 );
               });
               const now = isNowCell(cellDate);
+              const dayClosed = Boolean(closedHit(day));
               return (
                 <div
                   key={`${day.toISOString()}-${hour}`}
                   onClick={() => handleCellClick(day, hour, cellEvents)}
                   className={`relative border-b border-l border-line h-12 cursor-pointer transition hover:bg-paper ${
                     now ? "bg-gold-soft ring-1 ring-gold ring-inset" : ""
-                  } ${isToday(day) && !now ? "bg-brand-soft/40" : ""}`}
+                  } ${isToday(day) && !now && !dayClosed ? "bg-brand-soft/40" : ""} ${
+                    dayClosed && !now ? "bg-gold-soft/50" : ""
+                  }`}
                 >
                   <div className="absolute inset-0.5 flex flex-col gap-0.5 overflow-hidden">
                     {cellEvents.slice(0, 3).map((ev, idx) => (

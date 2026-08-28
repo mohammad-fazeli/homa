@@ -46,7 +46,7 @@ interface UsersStore {
     user: UserCreateInput,
     course?: CourseWriteInput,
     sessions?: string[]
-  ) => Promise<void>;
+  ) => Promise<UserFindByIdResult | undefined>;
   updateUser: (
     user: UserUpdateInput,
     course?: CourseWriteInput & { id: number },
@@ -131,9 +131,10 @@ export const useUsersStore = create<UsersStore>((set, get) => ({
   },
 
   addUser: async (user, course, sessions) => {
-    await window.electronAPI?.addUser(user, course, sessions);
+    const created = await window.electronAPI?.addUser(user, course, sessions);
     await get().loadUsers();
     emitAppDataChange();
+    return created;
   },
 
   getUser: async (userId) => {

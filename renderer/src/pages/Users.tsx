@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Download, Plus, Search } from "lucide-react";
+import { Download, Plus, Search, Upload } from "lucide-react";
 import { useUsersStore } from "../store/users";
 import UsersList from "../components/UsersList";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import Modal from "../components/Modal";
 import ConfirmDelete from "../components/forms/ConfirmDelete";
+import ImportCustomersModal from "../components/ImportCustomersModal";
 import { toast } from "react-toastify";
 import PageHeader from "../components/ui/PageHeader";
 import { formatDateTime } from "../lib/format";
@@ -38,6 +39,16 @@ export default function Users() {
     deleteUser,
   } = useUsersStore();
   const [draft, setDraft] = useState(query);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [importOpen, setImportOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("import") !== "1") return;
+    setImportOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("import");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -94,11 +105,18 @@ export default function Users() {
       <PageHeader
         eyebrow="دفتر مشتریان"
         title="مشتریان"
-        description="جستجو، فیلتر، حضور و رزرو جلسه از همین صفحه. Ctrl+K جستجوی سراسری است."
+        description="جستجو، فیلتر، ورود Excel و رزرو جلسه از همین صفحه. Ctrl+K جستجوی سراسری است."
         actions={
           <>
             <button type="button" className="btn btn-ghost" onClick={exportCurrent}>
               <Download size={16} /> خروجی CSV
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setImportOpen(true)}
+            >
+              <Upload size={16} /> ورود Excel
             </button>
             <Link to="/users/new" className="btn btn-primary">
               <Plus size={16} /> مشتری جدید
@@ -145,6 +163,13 @@ export default function Users() {
       </div>
 
       <UsersList isLoading={isLoading} users={users} />
+
+      {importOpen && (
+        <ImportCustomersModal
+          onClose={() => setImportOpen(false)}
+          onImported={() => void loadUsers()}
+        />
+      )}
 
       {deleteUserId !== null && (
         <Modal onClose={() => setDeleteUserId(null)}>

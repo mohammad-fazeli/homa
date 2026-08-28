@@ -70,9 +70,17 @@ export default function AttendanceOverlay({
           >
             <div className="absolute -top-10 -left-10 w-40 h-40 rounded-full bg-white/10 pulse-ring" />
             <div className="relative">
-              <div className="mx-auto w-16 h-16 rounded-full bg-white/15 flex items-center justify-center mb-4">
-                {icon}
-              </div>
+              {result.photoUrl ? (
+                <img
+                  src={result.photoUrl}
+                  alt=""
+                  className="mx-auto w-20 h-20 rounded-2xl object-cover mb-4 ring-2 ring-white/40"
+                />
+              ) : (
+                <div className="mx-auto w-16 h-16 rounded-full bg-white/15 flex items-center justify-center mb-4">
+                  {icon}
+                </div>
+              )}
               {result.userName && (
                 <p className="text-sm text-white/80 mb-1">{greeting}</p>
               )}

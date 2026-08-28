@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { DoorOpen, GraduationCap, Layers, Plus, Trash2 } from "lucide-react";
+import { DoorOpen, GraduationCap, Layers, Plus, Trash2, UsersRound, CalendarOff } from "lucide-react";
 import PageHeader from "../components/ui/PageHeader";
+import GroupsPanel from "../components/academy/GroupsPanel";
+import HolidaysPanel from "../components/academy/HolidaysPanel";
+import PhotoPicker from "../components/PhotoPicker";
 import { useAcademyStore } from "../store/academy";
 import { onAppDataChange, emitAppDataChange } from "../lib/bus";
 import type { AcademySnapshot } from "../global";
@@ -9,8 +12,11 @@ import type { AcademySnapshot } from "../global";
 const COLORS = ["#14635c", "#c4893a", "#3d5a80", "#7a3e65", "#2f7d57", "#8a4b2a"];
 
 export default function Academy() {
-  const { rooms, instructors, templates, load } = useAcademyStore();
-  const [tab, setTab] = useState<"rooms" | "instructors" | "templates">("rooms");
+  const { rooms, instructors, templates, groups, holidays, closedWeekdays, load } =
+    useAcademyStore();
+  const [tab, setTab] = useState<
+    "rooms" | "instructors" | "templates" | "groups" | "holidays"
+  >("rooms");
 
   useEffect(() => {
     void load();
@@ -22,7 +28,7 @@ export default function Academy() {
       <PageHeader
         eyebrow="ساختار آموزشگاه"
         title="کلاس‌ها و مربیان"
-        description="چند کلاس همزمان، ظرفیت هر اتاق، مربیان و بسته‌های آماده دوره."
+        description="چند کلاس همزمان، مربیان، بسته‌ها، گروه‌های نام‌دار و روزهای تعطیل آموزشگاه."
       />
       <div className="flex flex-wrap gap-2">
         {(
@@ -30,6 +36,8 @@ export default function Academy() {
             ["rooms", "کلاس‌ها", DoorOpen],
             ["instructors", "مربیان", GraduationCap],
             ["templates", "بسته‌ها", Layers],
+            ["groups", "گروه‌ها", UsersRound],
+            ["holidays", "تعطیلات", CalendarOff],
           ] as const
         ).map(([id, label, Icon]) => (
           <button
@@ -47,6 +55,22 @@ export default function Academy() {
       )}
       {tab === "templates" && (
         <TemplatesPanel templates={templates} onSaved={load} />
+      )}
+      {tab === "groups" && (
+        <GroupsPanel
+          groups={groups ?? []}
+          rooms={rooms}
+          instructors={instructors}
+          templates={templates}
+          onSaved={load}
+        />
+      )}
+      {tab === "holidays" && (
+        <HolidaysPanel
+          holidays={holidays ?? []}
+          closedWeekdays={closedWeekdays ?? []}
+          onSaved={load}
+        />
       )}
     </div>
   );
@@ -148,6 +172,8 @@ function InstructorsPanel({
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [color, setColor] = useState(COLORS[1]);
+  const [pendingPhoto, setPendingPhoto] = useState<Uint8Array | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   return (
     <div className="grid lg:grid-cols-[20rem_1fr] gap-4">
@@ -156,13 +182,25 @@ function InstructorsPanel({
         onSubmit={async (e) => {
           e.preventDefault();
           try {
-            await window.electronAPI?.academySaveInstructor({
+            const saved = await window.electronAPI?.academySaveInstructor({
               firstName,
               lastName,
               color,
             });
+            if (saved?.id && pendingPhoto) {
+              await window.electronAPI?.photosSave(
+                "instructor",
+                saved.id,
+                pendingPhoto
+              );
+            }
             setFirstName("");
             setLastName("");
+            setPendingPhoto(null);
+            setPhotoPreview((prev) => {
+              if (prev) URL.revokeObjectURL(prev);
+              return null;
+            });
             toast.success("مربی ذخیره شد");
             emitAppDataChange();
             await onSaved();
@@ -172,6 +210,30 @@ function InstructorsPanel({
         }}
       >
         <h3 className="font-semibold">مربی جدید</h3>
+        <PhotoPicker
+          firstName={firstName || "مربی"}
+          lastName={lastName || "جدید"}
+          previewUrl={photoPreview}
+          size="lg"
+          onPick={(bytes) => {
+            setPendingPhoto(bytes);
+            setPhotoPreview((prev) => {
+              if (prev) URL.revokeObjectURL(prev);
+              return URL.createObjectURL(new Blob([bytes], { type: "image/jpeg" }));
+            });
+          }}
+          onRemove={
+            photoPreview
+              ? () => {
+                  setPendingPhoto(null);
+                  setPhotoPreview((prev) => {
+                    if (prev) URL.revokeObjectURL(prev);
+                    return null;
+                  });
+                }
+              : undefined
+          }
+        />
         <input className="w-full rounded-2xl border border-line px-3 py-2.5" placeholder="نام" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
         <input className="w-full rounded-2xl border border-line px-3 py-2.5" placeholder="نام خانوادگی" value={lastName} onChange={(e) => setLastName(e.target.value)} />
         <div className="flex flex-wrap gap-2">
@@ -183,13 +245,36 @@ function InstructorsPanel({
       </form>
       <div className="grid sm:grid-cols-2 gap-3">
         {instructors.map((item) => (
-          <div key={item.id} className="surface-card rounded-3xl p-4 flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full" style={{ background: item.color }} />
-                <div className="font-semibold">{item.firstName} {item.lastName}</div>
+          <div key={item.id} className="surface-card rounded-3xl p-4 flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3 min-w-0">
+              <PhotoPicker
+                firstName={item.firstName}
+                lastName={item.lastName}
+                photoUrl={item.photoUrl}
+                size="md"
+                compact
+                onPick={async (bytes) => {
+                  await window.electronAPI?.photosSave("instructor", item.id, bytes);
+                  emitAppDataChange();
+                  await onSaved();
+                }}
+                onRemove={
+                  item.photoUrl
+                    ? async () => {
+                        await window.electronAPI?.photosRemove("instructor", item.id);
+                        emitAppDataChange();
+                        await onSaved();
+                      }
+                    : undefined
+                }
+              />
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full" style={{ background: item.color }} />
+                  <div className="font-semibold">{item.firstName} {item.lastName}</div>
+                </div>
+                {item.phone && <p className="text-sm text-muted mt-1" dir="ltr">{item.phone}</p>}
               </div>
-              {item.phone && <p className="text-sm text-muted mt-1" dir="ltr">{item.phone}</p>}
             </div>
             <button className="text-danger" onClick={async () => { await window.electronAPI?.academyDeleteInstructor(item.id); emitAppDataChange(); await onSaved(); }}>
               <Trash2 size={16} />

@@ -1,3 +1,10 @@
+export function localDayKey(date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function toEnglishDigits(value: string): string {
   return value
     .replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)))
@@ -48,6 +55,16 @@ export function hourKey(date: Date): string {
 }
 
 /** Saturday = 0 … Friday = 6 (matches the academy calendar). */
+export const WEEKDAY_LABELS = [
+  "شنبه",
+  "یکشنبه",
+  "دوشنبه",
+  "سه‌شنبه",
+  "چهارشنبه",
+  "پنجشنبه",
+  "جمعه",
+] as const;
+
 export function saturdayWeekdayIndex(date: Date): number {
   return (date.getDay() + 1) % 7;
 }
@@ -58,6 +75,7 @@ export function generateRecurringDates(options: {
   hour: number;
   count: number;
   maxDays?: number;
+  skipDate?: (date: Date) => boolean;
 }): Date[] {
   const weekdays = [...new Set(options.weekdays)].filter(
     (day) => day >= 0 && day <= 6
@@ -74,7 +92,9 @@ export function generateRecurringDates(options: {
     if (weekdays.includes(saturdayWeekdayIndex(cursor))) {
       const slot = new Date(cursor);
       slot.setHours(options.hour, 0, 0, 0);
-      dates.push(slot);
+      if (!options.skipDate?.(slot)) {
+        dates.push(slot);
+      }
     }
     cursor.setDate(cursor.getDate() + 1);
     guard += 1;

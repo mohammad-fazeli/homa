@@ -27,7 +27,7 @@ let connectPromise: Promise<void> | null = null;
 let dropping = false;
 let probeEverWorked = false;
 let openedPort: ListedPort | null = null;
-let loadHooked = new WeakSet<BrowserWindow>();
+const loadHooked = new WeakSet<BrowserWindow>();
 
 function sendToWindow(channel: string, ...args: unknown[]) {
   const win = targetWindow;

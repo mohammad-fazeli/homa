@@ -10,9 +10,9 @@ import {
   Search,
   Clock,
   AlertTriangle,
-  CheckCircle2,
   Download,
   UserRoundSearch,
+  Bell,
 } from "lucide-react";
 import { useDashboardStore } from "../store/dashboard";
 import { useRfidStatus } from "../components/useRfidStatus";
@@ -43,10 +43,24 @@ export default function Dashboard() {
   const { markSession, unmarkSession } = useAttendanceStore();
   const [now, setNow] = useState(() => new Date());
   const [search, setSearch] = useState("");
+  const [reminderCounts, setReminderCounts] = useState({
+    session_tomorrow: 0,
+    low_credit: 0,
+    debt: 0,
+  });
 
   useEffect(() => {
     loadData();
-    return onAppDataChange(loadData);
+    const loadReminders = () => {
+      void window.electronAPI?.remindersCounts().then((counts) => {
+        if (counts) setReminderCounts(counts);
+      });
+    };
+    loadReminders();
+    return onAppDataChange(() => {
+      loadData();
+      loadReminders();
+    });
   }, [loadData]);
 
   useEffect(() => {
@@ -171,6 +185,21 @@ export default function Dashboard() {
           </Card>
         ))}
       </div>
+
+      <Link
+        to="/reminders"
+        className="surface-card rounded-3xl p-4 flex flex-wrap items-center justify-between gap-3 hover:bg-paper"
+      >
+        <span className="inline-flex items-center gap-2 font-medium text-ink">
+          <Bell size={18} className="text-gold" />
+          یادآوری پیامک و واتساپ
+        </span>
+        <span className="text-sm text-muted">
+          فردا {reminderCounts.session_tomorrow.toLocaleString("fa-IR")} · اعتبار کم{" "}
+          {reminderCounts.low_credit.toLocaleString("fa-IR")} · بدهی{" "}
+          {reminderCounts.debt.toLocaleString("fa-IR")}
+        </span>
+      </Link>
 
       {overview.roomOccupancy.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -347,6 +376,7 @@ export default function Dashboard() {
                     <Avatar
                       firstName={user.firstName}
                       lastName={user.lastName}
+                      photoUrl={user.photoUrl}
                       size="sm"
                     />
                     <div className="flex-1">
@@ -380,7 +410,12 @@ export default function Dashboard() {
                     className="w-full flex items-center justify-between text-sm gap-3 rounded-xl px-2 py-1.5 hover:bg-paper text-right"
                   >
                     <span className="inline-flex items-center gap-2 min-w-0">
-                      <CheckCircle2 size={14} className="text-success shrink-0" />
+                      <Avatar
+                        firstName={session.title.split(" ")[0] || session.title}
+                        lastName={session.title.split(" ").slice(1).join(" ")}
+                        photoUrl={session.photoUrl}
+                        size="sm"
+                      />
                       <span className="truncate">{session.title}</span>
                     </span>
                     <span className="text-xs text-muted shrink-0">

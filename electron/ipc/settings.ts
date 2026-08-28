@@ -2,6 +2,9 @@ import { ipcMain } from "electron";
 import { readSettings, writeSettings } from "../settings-store";
 import type { AppSettings } from "../db/types";
 import { hashPin, publicSettings } from "../lib/pin";
+import { resolveReminderTemplates } from "../../shared/reminders";
+import { normalizeAutoBackupKeep } from "../../shared/backup";
+import { runAutoBackup } from "../lib/auto-backup";
 
 export const DEFAULT_TOLERANCE_MINUTES = 20;
 
@@ -13,6 +16,14 @@ export function getAppSettings(): AppSettings {
       stored.attendanceToleranceMinutes ?? DEFAULT_TOLERANCE_MINUTES,
     lockEnabled: stored.lockEnabled,
     lockPinHash: stored.lockPinHash,
+    academyName: stored.academyName?.trim() || "هما",
+    reminderTemplates: resolveReminderTemplates(stored.reminderTemplates),
+    autoBackupEnabled: Boolean(stored.autoBackupEnabled),
+    autoBackupFolder: stored.autoBackupFolder?.trim() || "",
+    autoBackupKeep: normalizeAutoBackupKeep(stored.autoBackupKeep),
+    lastAutoBackupAt: stored.lastAutoBackupAt?.trim() || "",
+    lastAutoBackupPath: stored.lastAutoBackupPath?.trim() || "",
+    autoBackupError: stored.autoBackupError?.trim() || "",
   };
 }
 
@@ -23,9 +34,32 @@ function safeSettings() {
 export function registerSettingsHandlers() {
   ipcMain.handle("settings:get", () => safeSettings());
 
-  ipcMain.handle("settings:set", (_event, partial: AppSettings) => {
-    const { lockPinHash: _ignored, ...rest } = partial;
+  ipcMain.handle("settings:set", async (_event, partial: AppSettings) => {
+    const {
+      lockPinHash: _ignored,
+      lastAutoBackupAt: _lastAt,
+      lastAutoBackupPath: _lastPath,
+      autoBackupError: _backupError,
+      ...rest
+    } = partial;
+    if (rest.autoBackupKeep !== undefined) {
+      rest.autoBackupKeep = normalizeAutoBackupKeep(rest.autoBackupKeep);
+    }
+    if (rest.autoBackupFolder !== undefined) {
+      rest.autoBackupFolder = rest.autoBackupFolder.trim();
+    }
+    const merged = { ...readSettings(), ...rest };
+    if (merged.autoBackupEnabled && !String(merged.autoBackupFolder || "").trim()) {
+      throw new Error("ابتدا پوشه پشتیبان را انتخاب کنید");
+    }
     writeSettings(rest);
+    if (
+      rest.autoBackupEnabled ||
+      rest.autoBackupFolder !== undefined ||
+      rest.autoBackupKeep !== undefined
+    ) {
+      await runAutoBackup();
+    }
     return safeSettings();
   });
 

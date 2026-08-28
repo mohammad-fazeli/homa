@@ -15,6 +15,7 @@ import { addDays, mapSqliteError, startOfDay } from "../../lib/utils";
 import { normalizeStatus } from "../../../shared/session";
 import { appliedSql, settleAccount } from "../../../shared/finance";
 import { PaymentModel } from "./PaymentModel";
+import { photoUrlFor, removePhotoFile } from "../../lib/photo-files";
 
 function todayRange() {
   const start = startOfDay();
@@ -121,10 +122,12 @@ function loadCourses(userId: number): UserCourseDetail[] {
         CASE
           WHEN i.id IS NULL THEN NULL
           ELSE i.firstName || ' ' || i.lastName
-        END AS instructorName
+        END AS instructorName,
+        g.name AS groupName
       FROM Courses c
       LEFT JOIN Rooms r ON r.id = c.roomId
       LEFT JOIN Instructors i ON i.id = c.instructorId
+      LEFT JOIN ClassGroups g ON g.id = c.groupId
       WHERE c.userId = ?
       ORDER BY c.id DESC
     `
@@ -146,6 +149,8 @@ function loadCourses(userId: number): UserCourseDetail[] {
       templateId: course.templateId ?? null,
       expiresAt: course.expiresAt ?? null,
       notes: course.notes ?? null,
+      groupId: course.groupId ?? null,
+      groupName: course.groupName ?? null,
       roomName: course.roomName ?? null,
       roomColor: course.roomColor ?? null,
       instructorName: course.instructorName ?? null,
@@ -170,6 +175,7 @@ function mapUser(user: any): UserFindByIdResult {
     nationalId: user.nationalId,
     uidCart: user.uidCart,
     notes: user.notes ?? null,
+    photoUrl: photoUrlFor("user", user.id),
     course: courses[0] ?? null,
     courses,
     debt,
@@ -331,6 +337,7 @@ export const UserModel = {
         roomName: latest?.roomName ?? null,
         debt: Math.max(0, contracted - paid),
         expired: Boolean(expiredRow?.expired),
+        photoUrl: photoUrlFor("user", u.id),
       };
     });
 
@@ -406,6 +413,8 @@ export const UserModel = {
   },
 
   delete(id: number) {
-    return db.prepare(`DELETE FROM Users WHERE id = ?`).run(id).changes;
+    const changes = db.prepare(`DELETE FROM Users WHERE id = ?`).run(id).changes;
+    if (changes) removePhotoFile("user", id);
+    return changes;
   },
 };

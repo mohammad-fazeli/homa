@@ -11,6 +11,7 @@ import { SessionModel } from "../db/models/SessionModel";
 import { RoomModel } from "../db/models/RoomModel";
 import { occupiesSlot } from "../../shared/session";
 import { cashInSql, refundSql } from "../../shared/finance";
+import { photoUrlFor } from "../lib/photo-files";
 
 const WEEKDAYS_FA = [
   "شنبه",
@@ -38,6 +39,7 @@ function toItem(session: SessionResult): DashboardSessionItem {
     roomColor: session.roomColor,
     instructorName: session.instructorName,
     courseTitle: session.courseTitle,
+    photoUrl: photoUrlFor("user", session.userId),
   };
 }
 
@@ -164,6 +166,7 @@ function buildOverview(): DashboardOverview {
       totalSessions: row.totalSessions,
       remainingSessions: Math.max(0, row.totalSessions - row.usedSessions),
       expired: Boolean(row.expired),
+      photoUrl: photoUrlFor("user", row.id),
     }))
     .filter(
       (row) =>

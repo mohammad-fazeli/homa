@@ -30,7 +30,7 @@ export default function UserItem({ user }: { user: UserFindAllItem }) {
     >
       <td className="px-5 py-4">
         <div className="flex items-center gap-3">
-          <Avatar firstName={user.firstName} lastName={user.lastName} />
+          <Avatar firstName={user.firstName} lastName={user.lastName} photoUrl={user.photoUrl} />
           <div>
             <div className="font-medium text-ink">
               {user.firstName} {user.lastName}

@@ -44,7 +44,7 @@ export default function UserProfileModal() {
         ) : (
           <>
             <div className="flex items-start gap-4">
-              <Avatar firstName={user.firstName} lastName={user.lastName} size="lg" />
+              <Avatar firstName={user.firstName} lastName={user.lastName} photoUrl={user.photoUrl} size="lg" />
               <div className="flex-1 min-w-0">
                 <h2 className="text-xl font-bold text-ink">
                   {user.firstName} {user.lastName}
@@ -158,9 +158,10 @@ export default function UserProfileModal() {
                         {formatMoney(course.cost)}
                       </div>
                     </div>
-                    {(course.roomName || course.instructorName || course.debt > 0) && (
+                    {(course.groupName || course.roomName || course.instructorName || course.debt > 0) && (
                       <p className="text-xs text-muted mb-2">
                         {[
+                          course.groupName,
                           course.roomName,
                           course.instructorName,
                           course.debt > 0 ? `بدهی ${formatMoney(course.debt)}` : "تسویه",

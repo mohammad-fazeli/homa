@@ -16,7 +16,6 @@ import {
 import {
   AlertCircle,
   Banknote,
-  CalendarRange,
   Download,
   Pencil,
   Percent,
@@ -50,7 +49,6 @@ import {
   toDateInputValue,
 } from "../lib/format";
 import {
-  DEBT_AGING_LABELS,
   PAYMENT_KIND_LABELS,
   PAYMENT_METHOD_LABELS,
   PAYMENT_METHODS,

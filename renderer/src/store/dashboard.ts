@@ -30,8 +30,12 @@ export const useDashboardStore = create<DashboardStore>((set) => ({
 
   loadData: async () => {
     set({ loading: true });
-    const overview = await window.electronAPI?.dashboardGetOverview();
-    if (overview) set({ overview, loading: false });
-    else set({ loading: false });
+    try {
+      const overview = await window.electronAPI?.dashboardGetOverview();
+      if (overview) set({ overview, loading: false });
+      else set({ loading: false });
+    } catch {
+      set({ loading: false });
+    }
   },
 }));

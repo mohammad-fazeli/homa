@@ -17,6 +17,7 @@ export function openDatabase(dbPath: string) {
   db = new Database(dbPath);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
+  db.pragma("busy_timeout = 5000");
   runMigrations();
   return db;
 }
@@ -29,4 +30,8 @@ export function closeDatabase() {
     /* already closed */
   }
   db = undefined as unknown as Database.Database;
+}
+
+export function isDatabaseOpen() {
+  return Boolean(db);
 }

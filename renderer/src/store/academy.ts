@@ -4,9 +4,18 @@ import type {
   CourseTemplateAttributes,
   InstructorAttributes,
   RoomAttributes,
+  ClassGroupDetail,
+  AcademyHoliday,
 } from "../global";
 
-const empty: AcademySnapshot = { rooms: [], instructors: [], templates: [] };
+const empty: AcademySnapshot = {
+  rooms: [],
+  instructors: [],
+  templates: [],
+  groups: [],
+  holidays: [],
+  closedWeekdays: [],
+};
 
 interface AcademyStore extends AcademySnapshot {
   loading: boolean;
@@ -18,9 +27,19 @@ export const useAcademyStore = create<AcademyStore>((set) => ({
   loading: false,
   load: async () => {
     set({ loading: true });
-    const snapshot = await window.electronAPI?.academySnapshot();
-    set({ ...(snapshot ?? empty), loading: false });
+    try {
+      const snapshot = await window.electronAPI?.academySnapshot();
+      set({ ...empty, ...(snapshot ?? {}), loading: false });
+    } catch {
+      set({ loading: false });
+    }
   },
 }));
 
-export type { RoomAttributes, InstructorAttributes, CourseTemplateAttributes };
+export type {
+  RoomAttributes,
+  InstructorAttributes,
+  CourseTemplateAttributes,
+  ClassGroupDetail,
+  AcademyHoliday,
+};

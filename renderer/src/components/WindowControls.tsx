@@ -9,7 +9,7 @@ export default function WindowControls() {
         style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
       >
         <div
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold tracking-wide"
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold tracking-wide"
           dir="rtl"
         >
           هما

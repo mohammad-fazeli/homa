@@ -1,10 +1,11 @@
 .env
 node_modules
 dist-electron
-build
+renderer/dist
+release
 *.sqlite3
 *.sqlite
 *.db
-dist-electron
-release
-renderer/dist
+*.log
+.DS_Store
+Thumbs.db

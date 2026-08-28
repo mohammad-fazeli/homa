@@ -34,6 +34,7 @@ export interface CourseAttributes {
   templateId?: number | null;
   expiresAt?: string | Date | null;
   notes?: string | null;
+  groupId?: number | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -58,6 +59,7 @@ export interface CourseWriteInput {
   expiresAt?: string | null;
   notes?: string | null;
   paidNow?: boolean;
+  groupId?: number | null;
 }
 
 export interface SessionAttributes {
@@ -122,6 +124,7 @@ export interface UserFindAllItem {
   roomName: string | null;
   debt: number;
   expired: boolean;
+  photoUrl?: string | null;
 }
 
 export interface UserFindAllResult {
@@ -152,6 +155,8 @@ export interface UserCourseDetail {
   templateId: number | null;
   expiresAt: string | Date | null;
   notes: string | null;
+  groupId: number | null;
+  groupName: string | null;
   roomName: string | null;
   roomColor: string | null;
   instructorName: string | null;
@@ -175,6 +180,7 @@ export interface UserFindByIdResult {
   credit: number;
   contracted: number;
   paidAmount: number;
+  photoUrl?: string | null;
 }
 
 export type UserListFilter =
@@ -208,6 +214,7 @@ export interface UseSessionResult {
   userName?: string;
   remainingSessions?: number;
   totalSessions?: number;
+  photoUrl?: string | null;
 }
 
 export interface RfidPortInfo {
@@ -215,12 +222,42 @@ export interface RfidPortInfo {
   manufacturer?: string;
 }
 
+export type ReminderKind = "session_tomorrow" | "low_credit" | "debt";
+
+export type ReminderChannel = "whatsapp" | "sms" | "copy";
+
 export interface AppSettings {
   rfidPort?: string;
   attendanceToleranceMinutes?: number;
   lockEnabled?: boolean;
   lockPinHash?: string;
+  academyName?: string;
+  reminderTemplates?: Partial<Record<ReminderKind, string>>;
+  autoBackupEnabled?: boolean;
+  autoBackupFolder?: string;
+  autoBackupKeep?: number;
+  lastAutoBackupAt?: string;
+  lastAutoBackupPath?: string;
+  autoBackupError?: string;
 }
+
+export type AutoBackupStatus = {
+  enabled: boolean;
+  folder: string;
+  folderMissing: boolean;
+  keep: number;
+  lastAt: string;
+  lastPath: string;
+  lastError: string;
+};
+
+export type AutoBackupRunResult = {
+  ok: boolean;
+  skipped?: boolean;
+  cancelled?: boolean;
+  path?: string;
+  error?: string;
+};
 
 export interface RoomAttributes {
   id: number;
@@ -245,6 +282,7 @@ export interface InstructorAttributes {
   phone: string | null;
   color: string;
   notes: string | null;
+  photoUrl?: string | null;
 }
 
 export type InstructorWriteInput = {
@@ -470,6 +508,7 @@ export interface DashboardSessionItem {
   roomColor: string | null;
   instructorName: string | null;
   courseTitle: string;
+  photoUrl?: string | null;
 }
 
 export interface DashboardAttentionUser {
@@ -479,6 +518,7 @@ export interface DashboardAttentionUser {
   remainingSessions: number;
   totalSessions: number;
   expired?: boolean;
+  photoUrl?: string | null;
 }
 
 export interface RoomOccupancyItem {
@@ -522,8 +562,134 @@ export interface AppConnectionStatus {
   timestamp: number;
 }
 
+export interface AcademyHoliday {
+  id: number;
+  dayKey: string;
+  title: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type AcademyHolidayWriteInput = {
+  id?: number;
+  dayKey: string;
+  title?: string | null;
+};
+
 export interface AcademySnapshot {
   rooms: RoomAttributes[];
   instructors: InstructorAttributes[];
   templates: CourseTemplateAttributes[];
+  groups: ClassGroupDetail[];
+  holidays: AcademyHoliday[];
+  closedWeekdays: number[];
 }
+
+export interface ClassGroupAttributes {
+  id: number;
+  name: string;
+  roomId: number | null;
+  instructorId: number | null;
+  templateId: number | null;
+  color: string;
+  notes: string | null;
+  weekdays: number[];
+  hour: number | null;
+  sessions: number;
+  cost: number;
+}
+
+export type ClassGroupWriteInput = {
+  id?: number;
+  name: string;
+  roomId?: number | null;
+  instructorId?: number | null;
+  templateId?: number | null;
+  color?: string;
+  notes?: string | null;
+  weekdays?: number[];
+  hour?: number | null;
+  sessions?: number;
+  cost?: number;
+};
+
+export interface ClassGroupMemberItem {
+  id: number;
+  groupId: number;
+  userId: number;
+  courseId: number | null;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  totalSessions: number;
+  remainingSessions: number;
+}
+
+export interface ClassGroupDetail extends ClassGroupAttributes {
+  roomName: string | null;
+  roomColor: string | null;
+  roomCapacity: number | null;
+  instructorName: string | null;
+  templateName: string | null;
+  memberCount: number;
+  members: ClassGroupMemberItem[];
+}
+
+export type ClassGroupGenerateInput = {
+  groupId: number;
+  startDate?: string;
+  weekdays?: number[];
+  hour?: number;
+  count?: number;
+};
+
+export type ClassGroupGenerateResult = {
+  created: number;
+  skipped: number;
+  group: ClassGroupDetail;
+};
+
+export interface ReminderItem {
+  key: string;
+  kind: ReminderKind;
+  userId: number;
+  sessionId: number | null;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  message: string;
+  whatsappUrl: string | null;
+  smsUrl: string | null;
+  sentAt: string | null;
+  sentChannel: ReminderChannel | null;
+  subtitle: string;
+}
+
+export interface ReminderCounts {
+  session_tomorrow: number;
+  low_credit: number;
+  debt: number;
+}
+
+export interface ReminderSnapshot {
+  academyName: string;
+  templates: Record<ReminderKind, string>;
+  counts: ReminderCounts;
+  pendingCounts: ReminderCounts;
+  items: ReminderItem[];
+}
+
+export type ReminderMarkSentInput = {
+  kind: ReminderKind;
+  userId: number;
+  channel: ReminderChannel;
+  sessionId?: number | null;
+  message: string;
+};
+
+export type {
+  CustomerImportCommitResult,
+  CustomerImportPreview,
+} from "./import-customers";
+
+export type { PhotoKind } from "./photos";

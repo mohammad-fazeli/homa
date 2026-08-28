@@ -1,5 +1,6 @@
 import { db } from "../connection";
 import { InstructorAttributes, InstructorWriteInput } from "../types";
+import { photoUrlFor, removePhotoFile } from "../../lib/photo-files";
 
 function mapInstructor(row: any): InstructorAttributes {
   return {
@@ -9,6 +10,7 @@ function mapInstructor(row: any): InstructorAttributes {
     phone: row.phone ?? null,
     color: row.color,
     notes: row.notes ?? null,
+    photoUrl: photoUrlFor("instructor", row.id),
   };
 }
 
@@ -74,6 +76,11 @@ export const InstructorModel = {
     db.prepare(
       `UPDATE Sessions SET instructorId = NULL WHERE instructorId = ?`
     ).run(id);
-    return db.prepare(`DELETE FROM Instructors WHERE id = ?`).run(id).changes;
+    db.prepare(
+      `UPDATE ClassGroups SET instructorId = NULL WHERE instructorId = ?`
+    ).run(id);
+    const changes = db.prepare(`DELETE FROM Instructors WHERE id = ?`).run(id).changes;
+    if (changes) removePhotoFile("instructor", id);
+    return changes;
   },
 };

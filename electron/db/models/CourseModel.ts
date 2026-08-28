@@ -13,6 +13,7 @@ function mapCourse(row: any): CourseResult {
     templateId: row.templateId ?? null,
     expiresAt: row.expiresAt ?? null,
     notes: row.notes ?? null,
+    groupId: row.groupId ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -23,9 +24,9 @@ export const CourseModel = {
     const stmt = db.prepare(`
       INSERT INTO Courses (
         userId, cost, sessions, title, roomId, instructorId, templateId,
-        expiresAt, notes, createdAt, updatedAt
+        expiresAt, notes, groupId, createdAt, updatedAt
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `);
 
     const result = stmt.run(
@@ -37,7 +38,8 @@ export const CourseModel = {
       data.instructorId ?? null,
       data.templateId ?? null,
       data.expiresAt ?? null,
-      data.notes ?? null
+      data.notes ?? null,
+      data.groupId ?? null
     );
 
     return this.findById(result.lastInsertRowid as number)!;
@@ -66,6 +68,7 @@ export const CourseModel = {
     templateId?: number | null;
     expiresAt?: string | Date | null;
     notes?: string | null;
+    groupId?: number | null;
   }) {
     const course = this.findById(data.id);
     if (!course) return null;
@@ -74,7 +77,7 @@ export const CourseModel = {
       `
       UPDATE Courses
       SET cost = ?, sessions = ?, title = ?, roomId = ?, instructorId = ?,
-          templateId = ?, expiresAt = ?, notes = ?, updatedAt = CURRENT_TIMESTAMP
+          templateId = ?, expiresAt = ?, notes = ?, groupId = ?, updatedAt = CURRENT_TIMESTAMP
       WHERE id = ?
     `
     ).run(
@@ -88,14 +91,27 @@ export const CourseModel = {
       data.templateId === undefined ? course.templateId ?? null : data.templateId,
       data.expiresAt === undefined ? course.expiresAt ?? null : data.expiresAt,
       data.notes === undefined ? course.notes ?? null : data.notes,
+      data.groupId === undefined ? course.groupId ?? null : data.groupId,
       data.id
     );
 
     return this.findById(data.id);
   },
 
+  findByUserAndGroup(userId: number, groupId: number): CourseResult | null {
+    const row = db
+      .prepare(
+        `SELECT * FROM Courses WHERE userId = ? AND groupId = ? ORDER BY id DESC LIMIT 1`
+      )
+      .get(userId, groupId);
+    return row ? mapCourse(row) : null;
+  },
+
   delete(id: number) {
     db.prepare(`UPDATE Payments SET courseId = NULL WHERE courseId = ?`).run(id);
+    db.prepare(
+      `UPDATE ClassGroupMembers SET courseId = NULL WHERE courseId = ?`
+    ).run(id);
     return db.prepare(`DELETE FROM Courses WHERE id = ?`).run(id).changes;
   },
 };

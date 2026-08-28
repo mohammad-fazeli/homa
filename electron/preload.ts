@@ -67,6 +67,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("rfid:setPort", portPath),
   dbBackup: () => ipcRenderer.invoke("db:backup"),
   dbRestore: () => ipcRenderer.invoke("db:restore"),
+  dbAutoBackupStatus: () => ipcRenderer.invoke("db:autoBackupStatus"),
+  dbChooseBackupFolder: () => ipcRenderer.invoke("db:chooseBackupFolder"),
+  dbRunAutoBackup: () => ipcRenderer.invoke("db:runAutoBackup"),
   getCalendar: (start: string | Date, end: string | Date) =>
     ipcRenderer.invoke("get-calendar", start, end),
   getCalender: (start: string | Date, end: string | Date) =>
@@ -97,6 +100,37 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("academy:saveTemplate", data),
   academyDeleteTemplate: (id: number) =>
     ipcRenderer.invoke("academy:deleteTemplate", id),
+  academySaveGroup: (data: any) => ipcRenderer.invoke("academy:saveGroup", data),
+  academyDeleteGroup: (id: number) =>
+    ipcRenderer.invoke("academy:deleteGroup", id),
+  academyAddGroupMember: (groupId: number, userId: number, paidNow?: boolean) =>
+    ipcRenderer.invoke("academy:addGroupMember", groupId, userId, paidNow),
+  academyRemoveGroupMember: (groupId: number, userId: number) =>
+    ipcRenderer.invoke("academy:removeGroupMember", groupId, userId),
+  academyGenerateGroupSessions: (input: unknown) =>
+    ipcRenderer.invoke("academy:generateGroupSessions", input),
+  academySaveHoliday: (data: { id?: number; dayKey: string; title?: string | null }) =>
+    ipcRenderer.invoke("academy:saveHoliday", data),
+  academyDeleteHoliday: (id: number) =>
+    ipcRenderer.invoke("academy:deleteHoliday", id),
+  academySetClosedWeekdays: (days: number[]) =>
+    ipcRenderer.invoke("academy:setClosedWeekdays", days),
+  remindersSnapshot: () => ipcRenderer.invoke("reminders:snapshot"),
+  remindersCounts: () => ipcRenderer.invoke("reminders:counts"),
+  remindersMarkSent: (input: unknown) =>
+    ipcRenderer.invoke("reminders:markSent", input),
+  remindersOpen: (payload: {
+    channel: "whatsapp" | "sms";
+    phone: string;
+    message: string;
+  }) => ipcRenderer.invoke("reminders:open", payload),
+  importCustomersPreview: () => ipcRenderer.invoke("import:preview"),
+  importCustomersCommit: () => ipcRenderer.invoke("import:commit"),
+  importCustomersTemplate: () => ipcRenderer.invoke("import:template"),
+  photosSave: (kind: "user" | "instructor", id: number, bytes: Uint8Array) =>
+    ipcRenderer.invoke("photos:save", kind, id, bytes),
+  photosRemove: (kind: "user" | "instructor", id: number) =>
+    ipcRenderer.invoke("photos:remove", kind, id),
   billingListPayments: (filter?: unknown, userId?: number) =>
     ipcRenderer.invoke("billing:listPayments", filter, userId),
   billingCreatePayment: (data: any) =>

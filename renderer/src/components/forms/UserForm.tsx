@@ -14,9 +14,11 @@ import { useAcademyStore } from "../../store/academy";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { sameHour } from "@shared/dates";
+import { closedDayMessage, holidayConflict } from "@shared/holidays";
 import { isValidNationalId, isValidPhone } from "@shared/validation";
 import Modal from "../Modal";
 import ConfirmDialog from "../ui/ConfirmDialog";
+import PhotoPicker from "../PhotoPicker";
 
 interface FormState {
   firstName: string;
@@ -64,7 +66,14 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
     deleteCourse,
     setCapturingUid,
   } = useUsersStore();
-  const { rooms, instructors, templates, load: loadAcademy } = useAcademyStore();
+  const {
+    rooms,
+    instructors,
+    templates,
+    holidays,
+    closedWeekdays,
+    load: loadAcademy,
+  } = useAcademyStore();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<FormState>({
     firstName: "",
@@ -76,6 +85,9 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
   const [courses, setCourses] = useState<CourseDraft[]>([emptyCourse()]);
   const [active, setActive] = useState(0);
   const [confirmDeleteCourse, setConfirmDeleteCourse] = useState(false);
+  const [pendingPhoto, setPendingPhoto] = useState<Uint8Array | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [removePhoto, setRemovePhoto] = useState(false);
 
   const current = courses[active] ?? courses[0];
 
@@ -124,6 +136,12 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
           : [emptyCourse()];
       setCourses(loaded);
       setActive(0);
+      setPendingPhoto(null);
+      setRemovePhoto(false);
+      setPhotoPreview((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
     } else if (!editingUser) {
       setForm({
         firstName: "",
@@ -134,6 +152,12 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
       });
       setCourses([emptyCourse()]);
       setActive(0);
+      setPendingPhoto(null);
+      setRemovePhoto(false);
+      setPhotoPreview((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
     }
   }, [editingUser, user]);
 
@@ -198,9 +222,14 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
           );
         }
         toast.success("مشتری به‌روزرسانی شد");
+        if (pendingPhoto) {
+          await window.electronAPI?.photosSave("user", user.id, pendingPhoto);
+        } else if (removePhoto) {
+          await window.electronAPI?.photosRemove("user", user.id);
+        }
       } else {
         const first = courses[0];
-        await addUser(
+        const created = await addUser(
           { ...form },
           {
             sessions: first?.sessions ?? 0,
@@ -213,6 +242,9 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
           },
           (first?.records ?? []).map((r) => new Date(r.date).toISOString())
         );
+        if (created?.id && pendingPhoto) {
+          await window.electronAPI?.photosSave("user", created.id, pendingPhoto);
+        }
         toast.success("مشتری جدید ذخیره شد");
       }
       onCancel();
@@ -235,6 +267,11 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
         });
         return;
       }
+      const hit = holidayConflict(date, holidays ?? [], closedWeekdays ?? []);
+      if (hit) {
+        toast.error(closedDayMessage(hit));
+        return;
+      }
       if (current.sessions > current.records.length) {
         patchCourse(active, {
           records: [
@@ -252,7 +289,7 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
         toast.error("تاریخ تمام جلسات این دوره تنظیم شد.");
       }
     },
-    [current, active, user]
+    [current, active, user, holidays, closedWeekdays]
   );
 
   if (editingUser && !user) {
@@ -283,6 +320,32 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
       </div>
 
       <form onSubmit={submit} className="space-y-8">
+        <PhotoPicker
+          firstName={form.firstName || "مشتری"}
+          lastName={form.lastName || "جدید"}
+          photoUrl={removePhoto ? null : user?.photoUrl}
+          previewUrl={photoPreview}
+          onPick={(bytes) => {
+            setPendingPhoto(bytes);
+            setRemovePhoto(false);
+            setPhotoPreview((prev) => {
+              if (prev) URL.revokeObjectURL(prev);
+              return URL.createObjectURL(new Blob([bytes], { type: "image/jpeg" }));
+            });
+          }}
+          onRemove={
+            photoPreview || (!removePhoto && user?.photoUrl)
+              ? () => {
+                  setPendingPhoto(null);
+                  setRemovePhoto(true);
+                  setPhotoPreview((prev) => {
+                    if (prev) URL.revokeObjectURL(prev);
+                    return null;
+                  });
+                }
+              : undefined
+          }
+        />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
           <Field
             label="نام"

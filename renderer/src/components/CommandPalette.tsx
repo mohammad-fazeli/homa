@@ -10,6 +10,8 @@ import {
   Wallet,
   School,
   Monitor,
+  Bell,
+  FileSpreadsheet,
 } from "lucide-react";
 import { useUsersStore } from "../store/users";
 import type { UserFindAllItem } from "../global";
@@ -19,10 +21,12 @@ const PAGES = [
   { id: "users", title: "مشتریان", hint: "فهرست و جستجو", path: "/users", icon: Users },
   { id: "sessions", title: "تقویم جلسات", hint: "برنامه هفته", path: "/sessions", icon: CalendarDays },
   { id: "billing", title: "مالی", hint: "صندوق، بدهی و گزارش", path: "/billing", icon: Wallet },
-  { id: "academy", title: "آموزشگاه", hint: "کلاس و مربی", path: "/academy", icon: School },
+  { id: "academy", title: "آموزشگاه", hint: "کلاس، مربی، گروه و تعطیلات", path: "/academy", icon: School },
+  { id: "reminders", title: "یادآوری‌ها", hint: "واتساپ و پیامک", path: "/reminders", icon: Bell },
   { id: "kiosk", title: "کیوسک", hint: "میز ورودی", path: "/kiosk", icon: Monitor },
-  { id: "settings", title: "تنظیمات", hint: "RFID و پشتیبان", path: "/settings", icon: Settings },
+  { id: "settings", title: "تنظیمات", hint: "RFID و پشتیبان روزانه", path: "/settings", icon: Settings },
   { id: "new", title: "مشتری جدید", hint: "Ctrl + N", path: "/users/new", icon: Plus },
+  { id: "import", title: "وارد کردن اکسل", hint: "Excel مشتریان قدیمی", path: "/users?import=1", icon: FileSpreadsheet },
 ];
 
 export default function CommandPalette({

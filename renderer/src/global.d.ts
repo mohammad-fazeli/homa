@@ -17,10 +17,13 @@ import type {
   UserListFilter,
   UserFilterCounts,
   AppSettings,
+  AutoBackupStatus,
+  AutoBackupRunResult,
   CourseWriteInput,
   AcademySnapshot,
   RoomWriteInput,
   InstructorWriteInput,
+  InstructorAttributes,
   CourseTemplateWriteInput,
   PaymentAttributes,
   PaymentCreateInput,
@@ -31,6 +34,19 @@ import type {
   CashReport,
   BillingOverview,
   SessionStatus,
+  ClassGroupWriteInput,
+  ClassGroupGenerateInput,
+  ClassGroupGenerateResult,
+  ClassGroupDetail,
+  AcademyHoliday,
+  AcademyHolidayWriteInput,
+  ReminderSnapshot,
+  ReminderCounts,
+  ReminderMarkSentInput,
+  ReminderChannel,
+  CustomerImportPreview,
+  CustomerImportCommitResult,
+  PhotoKind,
 } from "../../shared/types";
 
 export type RendererElectronAPI = {
@@ -78,6 +94,14 @@ export type RendererElectronAPI = {
   ) => Promise<{ ok: boolean; status: "online" | "offline" }>;
   dbBackup: () => Promise<{ ok?: boolean; cancelled?: boolean; path?: string }>;
   dbRestore: () => Promise<{ ok?: boolean; cancelled?: boolean }>;
+  dbAutoBackupStatus: () => Promise<AutoBackupStatus>;
+  dbChooseBackupFolder: () => Promise<{
+    cancelled?: boolean;
+    folder?: string;
+    status?: AutoBackupStatus;
+    ran?: AutoBackupRunResult;
+  }>;
+  dbRunAutoBackup: () => Promise<AutoBackupRunResult>;
   getCalendar: (start: string, end: string) => Promise<SessionResult[]>;
   getCalender: (start: string, end: string) => Promise<SessionResult[]>;
   billingGetSummary: () => Promise<BillingSummary>;
@@ -94,10 +118,56 @@ export type RendererElectronAPI = {
   academySnapshot: () => Promise<AcademySnapshot>;
   academySaveRoom: (data: RoomWriteInput) => Promise<unknown>;
   academyDeleteRoom: (id: number) => Promise<number>;
-  academySaveInstructor: (data: InstructorWriteInput) => Promise<unknown>;
+  academySaveInstructor: (data: InstructorWriteInput) => Promise<InstructorAttributes>;
   academyDeleteInstructor: (id: number) => Promise<number>;
   academySaveTemplate: (data: CourseTemplateWriteInput) => Promise<unknown>;
   academyDeleteTemplate: (id: number) => Promise<number>;
+  academySaveGroup: (data: ClassGroupWriteInput) => Promise<ClassGroupDetail>;
+  academyDeleteGroup: (id: number) => Promise<number>;
+  academyAddGroupMember: (
+    groupId: number,
+    userId: number,
+    paidNow?: boolean
+  ) => Promise<ClassGroupDetail>;
+  academyRemoveGroupMember: (
+    groupId: number,
+    userId: number
+  ) => Promise<ClassGroupDetail>;
+  academyGenerateGroupSessions: (
+    input: ClassGroupGenerateInput
+  ) => Promise<ClassGroupGenerateResult>;
+  academySaveHoliday: (data: AcademyHolidayWriteInput) => Promise<AcademyHoliday>;
+  academyDeleteHoliday: (id: number) => Promise<number>;
+  academySetClosedWeekdays: (days: number[]) => Promise<AcademySnapshot>;
+  remindersSnapshot: () => Promise<ReminderSnapshot>;
+  remindersCounts: () => Promise<ReminderCounts>;
+  remindersMarkSent: (input: ReminderMarkSentInput) => Promise<ReminderSnapshot>;
+  remindersOpen: (payload: {
+    channel: Exclude<ReminderChannel, "copy">;
+    phone: string;
+    message: string;
+  }) => Promise<{ ok: boolean }>;
+  importCustomersPreview: () => Promise<{
+    cancelled?: boolean;
+    filePath?: string;
+    fileName?: string;
+    preview?: CustomerImportPreview;
+  }>;
+  importCustomersCommit: () => Promise<CustomerImportCommitResult>;
+  importCustomersTemplate: () => Promise<{
+    ok?: boolean;
+    cancelled?: boolean;
+    path?: string;
+  }>;
+  photosSave: (
+    kind: PhotoKind,
+    id: number,
+    bytes: Uint8Array
+  ) => Promise<{ ok: boolean; photoUrl: string }>;
+  photosRemove: (
+    kind: PhotoKind,
+    id: number
+  ) => Promise<{ ok: boolean; photoUrl: string | null }>;
   billingListPayments: (
     filter?: PaymentListFilter | number,
     userId?: number
