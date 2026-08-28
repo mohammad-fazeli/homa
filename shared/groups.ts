@@ -1,4 +1,4 @@
-import { sameHour } from "./dates";
+import { DEFAULT_SLOT_MINUTES, sameTimeSlot } from "./dates";
 
 export type GroupMemberPlanInput = {
   userId: number;
@@ -41,10 +41,13 @@ export function serializeWeekdays(days: number[]): string {
 export function memberHasSlot(
   existing: ExistingMemberSlot[],
   userId: number,
-  date: Date
+  date: Date,
+  slotMinutes = DEFAULT_SLOT_MINUTES
 ): boolean {
   return existing.some(
-    (slot) => slot.userId === userId && sameHour(new Date(slot.date), date)
+    (slot) =>
+      slot.userId === userId &&
+      sameTimeSlot(new Date(slot.date), date, slotMinutes)
   );
 }
 
@@ -52,7 +55,9 @@ export function planGroupSessionAdds(options: {
   dates: Date[];
   members: GroupMemberPlanInput[];
   existingSlots: ExistingMemberSlot[];
+  slotMinutes?: number;
 }): PlannedGroupAdd[] {
+  const slotMinutes = options.slotMinutes ?? DEFAULT_SLOT_MINUTES;
   const remaining = new Map(
     options.members.map((member) => [member.userId, Math.max(0, member.remaining)])
   );
@@ -62,8 +67,16 @@ export function planGroupSessionAdds(options: {
     for (const member of options.members) {
       const left = remaining.get(member.userId) ?? 0;
       if (left <= 0) continue;
-      if (memberHasSlot(options.existingSlots, member.userId, date)) continue;
-      if (adds.some((add) => add.userId === member.userId && sameHour(add.date, date))) {
+      if (memberHasSlot(options.existingSlots, member.userId, date, slotMinutes)) {
+        continue;
+      }
+      if (
+        adds.some(
+          (add) =>
+            add.userId === member.userId &&
+            sameTimeSlot(add.date, date, slotMinutes)
+        )
+      ) {
         continue;
       }
       adds.push({ userId: member.userId, courseId: member.courseId, date });
@@ -74,14 +87,23 @@ export function planGroupSessionAdds(options: {
   return adds;
 }
 
-export function uniquePlanDates(adds: PlannedGroupAdd[]): Date[] {
+export function uniquePlanDates(
+  adds: PlannedGroupAdd[],
+  slotMinutes = DEFAULT_SLOT_MINUTES
+): Date[] {
   const seen: Date[] = [];
   for (const add of adds) {
-    if (!seen.some((date) => sameHour(date, add.date))) seen.push(add.date);
+    if (!seen.some((date) => sameTimeSlot(date, add.date, slotMinutes))) {
+      seen.push(add.date);
+    }
   }
   return seen;
 }
 
-export function countAddsAtHour(adds: PlannedGroupAdd[], date: Date): number {
-  return adds.filter((add) => sameHour(add.date, date)).length;
+export function countAddsAtHour(
+  adds: PlannedGroupAdd[],
+  date: Date,
+  slotMinutes = DEFAULT_SLOT_MINUTES
+): number {
+  return adds.filter((add) => sameTimeSlot(add.date, date, slotMinutes)).length;
 }

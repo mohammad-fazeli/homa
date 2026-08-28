@@ -262,7 +262,7 @@ export default function Settings() {
         </div>
         <p className="text-sm text-muted">
           اگر کارت بیرون از این بازه نسبت به ساعت جلسه خوانده شود، ثبت دستی از شما
-          تأیید می‌گیرد.
+          تأیید می‌گیرد. همین مقدار، بازهٔ زمانی تقویم جلسات را هم تعیین می‌کند.
         </p>
         <div className="flex flex-wrap gap-2">
           {TOLERANCE_OPTIONS.map((minutes) => (

@@ -13,7 +13,8 @@ import WeeklyCalendar, { RecordItem } from "../WeeklyCalendar";
 import { useAcademyStore } from "../../store/academy";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
-import { sameHour } from "@shared/dates";
+import { sameTimeSlot } from "@shared/dates";
+import { useCalendarSlotMinutes } from "../../lib/slots";
 import { closedDayMessage, holidayConflict } from "@shared/holidays";
 import { isValidNationalId, isValidPhone } from "@shared/validation";
 import Modal from "../Modal";
@@ -74,6 +75,7 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
     closedWeekdays,
     load: loadAcademy,
   } = useAcademyStore();
+  const slotMinutes = useCalendarSlotMinutes();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<FormState>({
     firstName: "",
@@ -259,7 +261,7 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
     (date: Date) => {
       if (!current) return;
       const exist = current.records.find((r) =>
-        sameHour(new Date(r.date), date)
+        sameTimeSlot(new Date(r.date), date, slotMinutes)
       );
       if (exist) {
         patchCourse(active, {
@@ -289,7 +291,7 @@ export default function UserForm({ onCancel }: { onCancel: () => void }) {
         toast.error("تاریخ تمام جلسات این دوره تنظیم شد.");
       }
     },
-    [current, active, user, holidays, closedWeekdays]
+    [current, active, user, holidays, closedWeekdays, slotMinutes]
   );
 
   if (editingUser && !user) {

@@ -6,6 +6,12 @@ import { useAcademyStore } from "../store/academy";
 import { onAppDataChange } from "../lib/bus";
 import { userColor } from "../lib/format";
 import { closedDayLabel, holidayConflict } from "@shared/holidays";
+import {
+  buildCalendarSlotTimes,
+  formatSlotTime,
+  sameTimeSlot,
+} from "@shared/dates";
+import { useCalendarSlotMinutes } from "../lib/slots";
 
 export type RecordItem = {
   id: number;
@@ -59,12 +65,13 @@ function isToday(date: Date) {
   );
 }
 
-function isNowCell(cellDate: Date) {
+function isNowCell(cellDate: Date, slotMinutes: number) {
   const now = new Date();
-  return isToday(cellDate) && cellDate.getHours() === now.getHours();
+  return isToday(cellDate) && sameTimeSlot(now, cellDate, slotMinutes);
 }
 
-const HOURS = Array.from({ length: 17 }, (_, i) => 8 + i);
+const CALENDAR_START_HOUR = 8;
+const CALENDAR_LAST_HOUR = 23;
 const WEEKDAYS_FA = [
   "شنبه",
   "یکشنبه",
@@ -93,6 +100,11 @@ export default function WeeklyCalendar({
   const holidays = useAcademyStore((s) => s.holidays);
   const closedWeekdays = useAcademyStore((s) => s.closedWeekdays);
   const loadAcademy = useAcademyStore((s) => s.load);
+  const slotMinutes = useCalendarSlotMinutes();
+  const timeSlots = useMemo(
+    () => buildCalendarSlotTimes(CALENDAR_START_HOUR, CALENDAR_LAST_HOUR, slotMinutes),
+    [slotMinutes]
+  );
 
   useEffect(() => {
     void loadAcademy();
@@ -119,9 +131,9 @@ export default function WeeklyCalendar({
   const closedHit = (date: Date) =>
     holidayConflict(date, holidays ?? [], closedWeekdays ?? []);
 
-  const handleCellClick = (day: Date, hour: number, events: CalendarEvent[]) => {
+  const handleCellClick = (day: Date, hour: number, minute: number, events: CalendarEvent[]) => {
     const start = new Date(day);
-    start.setHours(hour, 0, 0, 0);
+    start.setHours(hour, minute, 0, 0);
     const ownEvent = events.find((ev) => ev.userId === currentUserId);
     if (ownEvent && onAddEvent) {
       setClosedNote(null);
@@ -355,30 +367,25 @@ export default function WeeklyCalendar({
           );
         })}
 
-        {HOURS.map((hour) => (
-          <div key={hour} className="contents">
-            <div className="border-b border-l border-line p-2 text-center bg-paper sticky right-0 z-10 text-muted">
-              {hour.toLocaleString("fa-IR")}:۰۰
+        {timeSlots.map(({ hour, minute }) => (
+          <div key={`${hour}-${minute}`} className="contents">
+            <div className="border-b border-l border-line p-1.5 text-center bg-paper sticky right-0 z-10 text-muted text-[10px] leading-tight">
+              {formatSlotTime(hour, minute)}
             </div>
             {days.map((day) => {
               const cellDate = new Date(day);
-              cellDate.setHours(hour, 0, 0, 0);
+              cellDate.setHours(hour, minute, 0, 0);
               const cellEvents = allEvents.filter((ev) => {
                 const evDate = new Date(ev.start);
-                return (
-                  evDate.getFullYear() === cellDate.getFullYear() &&
-                  evDate.getMonth() === cellDate.getMonth() &&
-                  evDate.getDate() === cellDate.getDate() &&
-                  evDate.getHours() === cellDate.getHours()
-                );
+                return sameTimeSlot(evDate, cellDate, slotMinutes);
               });
-              const now = isNowCell(cellDate);
+              const now = isNowCell(cellDate, slotMinutes);
               const dayClosed = Boolean(closedHit(day));
               return (
                 <div
-                  key={`${day.toISOString()}-${hour}`}
-                  onClick={() => handleCellClick(day, hour, cellEvents)}
-                  className={`relative border-b border-l border-line h-12 cursor-pointer transition hover:bg-paper ${
+                  key={`${day.toISOString()}-${hour}-${minute}`}
+                  onClick={() => handleCellClick(day, hour, minute, cellEvents)}
+                  className={`relative border-b border-l border-line h-8 cursor-pointer transition hover:bg-paper ${
                     now ? "bg-gold-soft ring-1 ring-gold ring-inset" : ""
                   } ${isToday(day) && !now && !dayClosed ? "bg-brand-soft/40" : ""} ${
                     dayClosed && !now ? "bg-gold-soft/50" : ""

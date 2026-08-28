@@ -14,7 +14,7 @@ import {
   serializeWeekdays,
   uniquePlanDates,
 } from "../../../shared/groups";
-import { generateRecurringDates, toIsoDate } from "../../../shared/dates";
+import { generateRecurringDates, normalizeSlotMinutes, toIsoDate } from "../../../shared/dates";
 import { holidayConflict } from "../../../shared/holidays";
 import { occupiesSlot } from "../../../shared/session";
 import { countRoomOccupancy, isInstructorBusy } from "../../lib/session-match";
@@ -25,6 +25,8 @@ import { PaymentModel } from "./PaymentModel";
 import { RoomModel } from "./RoomModel";
 import { SessionLogModel } from "./SessionLogModel";
 import { SessionModel } from "./SessionModel";
+import { readSettings } from "../../settings-store";
+import { DEFAULT_TOLERANCE_MINUTES } from "../../ipc/settings";
 import { HolidayModel } from "./HolidayModel";
 import { UserModel } from "./UserModel";
 
@@ -410,10 +412,15 @@ export const ClassGroupModel = {
       )
       .all(group.id) as Array<{ userId: number; date: string }>;
 
+    const slotMinutes = normalizeSlotMinutes(
+      readSettings().attendanceToleranceMinutes ?? DEFAULT_TOLERANCE_MINUTES
+    );
+
     const adds = planGroupSessionAdds({
       dates,
       members,
       existingSlots,
+      slotMinutes,
     });
 
     const occupancy = SessionModel.listOccupancy();
@@ -423,9 +430,15 @@ export const ClassGroupModel = {
       : null;
 
     if (room) {
-      for (const date of uniquePlanDates(adds)) {
-        const occupied = countRoomOccupancy(occupancy, date, room.id);
-        const adding = countAddsAtHour(adds, date);
+      for (const date of uniquePlanDates(adds, slotMinutes)) {
+        const occupied = countRoomOccupancy(
+          occupancy,
+          date,
+          room.id,
+          [],
+          slotMinutes
+        );
+        const adding = countAddsAtHour(adds, date, slotMinutes);
         if (occupied + adding > room.capacity) {
           throw new Error(
             `ظرفیت «${room.name}» در این ساعت پر است (${room.capacity.toLocaleString("fa-IR")} نفر)`
@@ -435,14 +448,15 @@ export const ClassGroupModel = {
     }
 
     if (instructor) {
-      for (const date of uniquePlanDates(adds)) {
+      for (const date of uniquePlanDates(adds, slotMinutes)) {
         if (
           isInstructorBusy(
             occupancy,
             date,
             instructor.id,
             [],
-            group.roomId
+            group.roomId,
+            slotMinutes
           )
         ) {
           throw new Error(

@@ -15,6 +15,9 @@ import { RoomModel } from "./RoomModel";
 import { CourseModel } from "./CourseModel";
 import { InstructorModel } from "./InstructorModel";
 import { HolidayModel } from "./HolidayModel";
+import { readSettings } from "../../settings-store";
+import { DEFAULT_TOLERANCE_MINUTES } from "../../ipc/settings";
+import { normalizeSlotMinutes } from "../../../shared/dates";
 
 const SESSION_SELECT = `
   SELECT
@@ -127,6 +130,9 @@ export const SessionModel = {
     this.assertOpenDates(dates, options.ignoreClosedDates);
     const existing = this.listOccupancy();
     const excludeIds = options.excludeIds ?? [];
+    const slotMinutes = normalizeSlotMinutes(
+      readSettings().attendanceToleranceMinutes ?? DEFAULT_TOLERANCE_MINUTES
+    );
     const room = options.roomId ? RoomModel.findById(options.roomId) : null;
     const instructor = options.instructorId
       ? InstructorModel.findById(options.instructorId)
@@ -138,7 +144,8 @@ export const SessionModel = {
           existing,
           date,
           room.id,
-          excludeIds
+          excludeIds,
+          slotMinutes
         );
         if (occupied >= room.capacity) {
           throw new Error(
@@ -151,7 +158,8 @@ export const SessionModel = {
         date,
         instructor.id,
         excludeIds,
-        options.roomId ?? null
+        options.roomId ?? null,
+        slotMinutes
       )) {
         throw new Error(
           `مربی ${instructor.firstName} ${instructor.lastName} در این ساعت کلاس دیگری دارد`

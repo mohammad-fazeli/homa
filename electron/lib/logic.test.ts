@@ -29,6 +29,8 @@ describe("dates", () => {
     const a = new Date(2026, 7, 25, 10, 0, 0);
     const b = new Date(2026, 7, 25, 10, 45, 0);
     expect(sameHour(a, b)).toBe(true);
+    expect(sameHour(a, new Date(2026, 7, 25, 10, 15, 0))).toBe(true);
+    expect(sameHour(a, new Date(2026, 7, 25, 11, 0, 0))).toBe(false);
   });
 });
 
@@ -102,15 +104,21 @@ describe("instructor conflict", () => {
 });
 
 describe("hour conflict", () => {
-  it("detects overlapping hours", () => {
+  it("detects overlapping slots", () => {
     const existing = [
       { id: 1, date: new Date(2026, 7, 25, 10, 0, 0).toISOString() },
     ];
     expect(
-      hasHourConflict(existing, new Date(2026, 7, 25, 10, 15, 0), [])
+      hasHourConflict(existing, new Date(2026, 7, 25, 10, 15, 0), [], 60)
     ).toBe(true);
     expect(
-      hasHourConflict(existing, new Date(2026, 7, 25, 11, 0, 0), [])
+      hasHourConflict(existing, new Date(2026, 7, 25, 10, 15, 0), [], 20)
+    ).toBe(true);
+    expect(
+      hasHourConflict(existing, new Date(2026, 7, 25, 10, 25, 0), [], 20)
+    ).toBe(false);
+    expect(
+      hasHourConflict(existing, new Date(2026, 7, 25, 11, 0, 0), [], 60)
     ).toBe(false);
   });
 });

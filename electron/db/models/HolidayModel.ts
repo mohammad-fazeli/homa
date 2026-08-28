@@ -5,7 +5,9 @@ import {
   normalizeClosedWeekdays,
   parseDayKey,
 } from "../../../shared/holidays";
-import { parseFlexibleDate, sameHour } from "../../../shared/dates";
+import { parseFlexibleDate, sameTimeSlot, normalizeSlotMinutes } from "../../../shared/dates";
+import { readSettings } from "../../settings-store";
+import { DEFAULT_TOLERANCE_MINUTES } from "../../ipc/settings";
 import { parseWeekdays, serializeWeekdays } from "../../../shared/groups";
 import type { AcademyHoliday, AcademyHolidayWriteInput } from "../types";
 
@@ -76,7 +78,19 @@ export const HolidayModel = {
     for (const date of dates) {
       const parsed = parseFlexibleDate(date);
       if (!parsed) continue;
-      if (ignore.some((kept) => sameHour(kept, parsed))) continue;
+      if (
+        ignore.some((kept) =>
+          sameTimeSlot(
+            kept,
+            parsed,
+            normalizeSlotMinutes(
+              readSettings().attendanceToleranceMinutes ?? DEFAULT_TOLERANCE_MINUTES
+            )
+          )
+        )
+      ) {
+        continue;
+      }
       const hit = holidayConflict(parsed, holidays, closedWeekdays);
       if (hit) throw new Error(closedDayMessage(hit));
     }

@@ -41,17 +41,64 @@ export function toIsoDate(value: string | Date): string {
   return parsed.toISOString();
 }
 
+export const DEFAULT_SLOT_MINUTES = 20;
+
+export function normalizeSlotMinutes(value?: number | null): number {
+  const minutes = Math.floor(Number(value) || DEFAULT_SLOT_MINUTES);
+  return Math.min(60, Math.max(5, minutes));
+}
+
+export function slotStart(date: Date, slotMinutes: number): Date {
+  const slot = normalizeSlotMinutes(slotMinutes);
+  const snapped = new Date(date);
+  snapped.setSeconds(0, 0);
+  const minute = snapped.getMinutes();
+  snapped.setMinutes(Math.floor(minute / slot) * slot, 0, 0);
+  return snapped;
+}
+
+export function sameTimeSlot(a: Date, b: Date, slotMinutes: number): boolean {
+  const slot = normalizeSlotMinutes(slotMinutes);
+  const left = slotStart(a, slot);
+  const right = slotStart(b, slot);
+  return left.getTime() === right.getTime();
+}
+
 export function sameHour(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate() &&
-    a.getHours() === b.getHours()
-  );
+  return sameTimeSlot(a, b, 60);
 }
 
 export function hourKey(date: Date): string {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}-${date.getHours()}`;
+}
+
+export function slotKey(date: Date, slotMinutes: number): string {
+  const start = slotStart(date, slotMinutes);
+  return `${start.getFullYear()}-${start.getMonth()}-${start.getDate()}-${start.getHours()}-${start.getMinutes()}`;
+}
+
+export function buildCalendarSlotTimes(
+  startHour: number,
+  lastHour: number,
+  slotMinutes: number
+): Array<{ hour: number; minute: number }> {
+  const slot = normalizeSlotMinutes(slotMinutes);
+  const times: Array<{ hour: number; minute: number }> = [];
+  for (let hour = startHour; hour <= lastHour; hour += 1) {
+    for (let minute = 0; minute < 60; minute += slot) {
+      times.push({ hour, minute });
+    }
+  }
+  return times;
+}
+
+export function formatSlotTime(hour: number, minute: number, locale = "fa-IR"): string {
+  const stamp = new Date(2000, 0, 1, hour, minute);
+  return stamp.toLocaleTimeString(locale, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 }
 
 /** Saturday = 0 … Friday = 6 (matches the academy calendar). */

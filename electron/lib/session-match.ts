@@ -1,4 +1,4 @@
-import { sameHour } from "../../shared/dates";
+import { DEFAULT_SLOT_MINUTES, sameTimeSlot } from "../../shared/dates";
 import { occupiesSlot } from "../../shared/session";
 
 export type RfidSession = {
@@ -93,13 +93,15 @@ export function resolveRfidSession(
 export function hasHourConflict(
   existing: Array<{ id: number; date: string | Date }>,
   candidate: string | Date,
-  excludeIds: number[] = []
+  excludeIds: number[] = [],
+  slotMinutes = DEFAULT_SLOT_MINUTES
 ): boolean {
   const target = new Date(candidate);
   if (Number.isNaN(target.getTime())) return false;
   return existing.some(
     (item) =>
-      !excludeIds.includes(item.id) && sameHour(new Date(item.date), target)
+      !excludeIds.includes(item.id) &&
+      sameTimeSlot(new Date(item.date), target, slotMinutes)
   );
 }
 
@@ -107,7 +109,8 @@ export function countRoomOccupancy(
   existing: OccupancySession[],
   candidate: string | Date,
   roomId: number | null | undefined,
-  excludeIds: number[] = []
+  excludeIds: number[] = [],
+  slotMinutes = DEFAULT_SLOT_MINUTES
 ): number {
   if (!roomId) return 0;
   const target = new Date(candidate);
@@ -117,7 +120,7 @@ export function countRoomOccupancy(
       !excludeIds.includes(item.id) &&
       item.roomId === roomId &&
       occupiesSlot(item.status, item.used) &&
-      sameHour(new Date(item.date), target)
+      sameTimeSlot(new Date(item.date), target, slotMinutes)
   ).length;
 }
 
@@ -126,7 +129,8 @@ export function isInstructorBusy(
   candidate: string | Date,
   instructorId: number | null | undefined,
   excludeIds: number[] = [],
-  candidateRoomId?: number | null
+  candidateRoomId?: number | null,
+  slotMinutes = DEFAULT_SLOT_MINUTES
 ): boolean {
   if (!instructorId) return false;
   const target = new Date(candidate);
@@ -135,7 +139,7 @@ export function isInstructorBusy(
     if (excludeIds.includes(item.id)) return false;
     if (item.instructorId !== instructorId) return false;
     if (!occupiesSlot(item.status, item.used)) return false;
-    if (!sameHour(new Date(item.date), target)) return false;
+    if (!sameTimeSlot(new Date(item.date), target, slotMinutes)) return false;
     if (
       candidateRoomId != null &&
       item.roomId != null &&
