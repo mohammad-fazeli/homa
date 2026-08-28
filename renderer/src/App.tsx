@@ -9,6 +9,7 @@ import AttendanceOverlay from "./components/AttendanceOverlay";
 import LockScreen from "./components/LockScreen";
 import CommandPalette from "./components/CommandPalette";
 import UserProfileModal from "./components/UserProfileModal";
+import PaymentModal from "./components/finance/PaymentModal";
 import WeeklyCalendar from "./components/WeeklyCalendar";
 import { useAttendanceStore } from "./store/attendance";
 
@@ -145,6 +146,7 @@ function AppShell() {
         </Modal>
       )}
       <UserProfileModal />
+      <PaymentModal />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <AttendanceOverlay result={overlay} onClose={clearOverlay} />
     </>

@@ -3,7 +3,7 @@ import * as path from "path";
 import dotenv from "dotenv";
 import { registerUserHandlers } from "./ipc/users";
 import { initDatabase } from "./db";
-import { registerRfidHandlers, registerRfidIpc } from "./ipc/rfid";
+import { registerRfidHandlers, registerRfidIpc, stopRfid } from "./ipc/rfid";
 import { registerCalendarHandlers } from "./ipc/calendar";
 import { registerBillingHandlers } from "./ipc/billing";
 import { registerDashboardHandlers } from "./ipc/dashboard";
@@ -101,4 +101,8 @@ app.on("activate", () => {
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
+});
+
+app.on("before-quit", () => {
+  stopRfid();
 });

@@ -44,6 +44,12 @@ export default function Settings() {
     void load();
   }, []);
 
+  useEffect(() => {
+    void window.electronAPI?.rfidListPorts().then((list) => {
+      setPorts(list ?? []);
+    });
+  }, [ping]);
+
   const exportCustomers = async () => {
     const result = await window.electronAPI?.getUsers(1, 5000, "", "all");
     exportCsv(
@@ -110,7 +116,9 @@ export default function Settings() {
           </span>
         </div>
         <p className="text-sm text-muted">
-          اگر پورتی انتخاب نشود، اولین پورت غیر بلوتوث به‌صورت خودکار استفاده می‌شود.
+          وضعیت «متصل» فقط وقتی نشان داده می‌شود که پورت در سیستم باشد و باز شده
+          باشد. انتخاب خودکار فقط پورت USB سریال را برمی‌دارد، نه COM داخلی و نه
+          بلوتوث.
         </p>
         <select
           value={selected}
@@ -125,6 +133,12 @@ export default function Settings() {
             </option>
           ))}
         </select>
+        {selected && !ports.some((port) => port.path === selected) && (
+          <p className="text-sm text-danger">
+            پورت ذخیره‌شده الان در سیستم نیست. دستگاه را وصل کنید یا پورت دیگری
+            انتخاب کنید.
+          </p>
+        )}
         <div className="flex gap-2">
           <button
             className="btn btn-primary disabled:opacity-60"

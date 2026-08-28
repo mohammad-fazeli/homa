@@ -28,7 +28,7 @@ export default function Sidebar() {
   const navigate = useNavigate();
 
   return (
-    <aside className="w-[16.5rem] h-full bg-shell text-white flex flex-col shrink-0">
+    <aside className="w-[16.5rem] h-full bg-shell text-white flex flex-col shrink-0 no-print">
       <div className="px-5 pt-6 pb-5">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-2xl bg-linear-to-br from-gold to-brand flex items-center justify-center shadow-lg shadow-black/20">

@@ -5,7 +5,9 @@ export type SessionStatus =
   | "cancelled"
   | "makeup";
 
-export type PaymentMethod = "cash" | "card" | "transfer";
+export type PaymentMethod = "cash" | "card" | "transfer" | "check" | "online";
+
+export type PaymentKind = "payment" | "refund" | "discount";
 
 export interface UserAttributes {
   id: number;
@@ -170,6 +172,9 @@ export interface UserFindByIdResult {
   course: UserCourseDetail | null;
   courses: UserCourseDetail[];
   debt: number;
+  credit: number;
+  contracted: number;
+  paidAmount: number;
 }
 
 export type UserListFilter =
@@ -273,9 +278,12 @@ export interface PaymentAttributes {
   courseId: number | null;
   amount: number;
   method: PaymentMethod;
+  kind: PaymentKind;
   note: string | null;
+  reference: string | null;
   paidAt: string;
   userFullName?: string;
+  userPhone?: string;
   courseTitle?: string | null;
 }
 
@@ -284,17 +292,140 @@ export type PaymentCreateInput = {
   courseId?: number | null;
   amount: number;
   method: PaymentMethod;
+  kind?: PaymentKind;
   note?: string | null;
+  reference?: string | null;
   paidAt?: string;
 };
+
+export type PaymentUpdateInput = {
+  id: number;
+  courseId?: number | null;
+  amount?: number;
+  method?: PaymentMethod;
+  kind?: PaymentKind;
+  note?: string | null;
+  reference?: string | null;
+  paidAt?: string;
+};
+
+export type PaymentListFilter = {
+  userId?: number;
+  courseId?: number;
+  method?: PaymentMethod | "all";
+  kind?: PaymentKind | "all";
+  search?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export interface PaymentListResult {
+  data: PaymentAttributes[];
+  total: number;
+  collected: number;
+  refunded: number;
+  discounted: number;
+  net: number;
+}
+
+export interface MethodBreakdownItem {
+  method: PaymentMethod;
+  count: number;
+  amount: number;
+}
+
+export interface DebtorCourseItem {
+  id: number;
+  title: string;
+  cost: number;
+  paidAmount: number;
+  debt: number;
+  createdAt: string | null;
+}
+
+export interface DebtorRow {
+  userId: number;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  contracted: number;
+  applied: number;
+  collected: number;
+  discounted: number;
+  refunded: number;
+  debt: number;
+  credit: number;
+  lastPaidAt: string | null;
+  oldestUnpaidAt: string | null;
+  courses: DebtorCourseItem[];
+}
+
+export type DebtAgingBucket = "d0" | "d30" | "d60" | "d90";
+
+export interface DebtAgingItem {
+  bucket: DebtAgingBucket;
+  label: string;
+  count: number;
+  amount: number;
+}
+
+export interface CashReportDay {
+  date: string;
+  collected: number;
+  refunded: number;
+  discounted: number;
+  net: number;
+  count: number;
+}
+
+export interface CashReport {
+  from: string;
+  to: string;
+  collected: number;
+  refunded: number;
+  discounted: number;
+  net: number;
+  count: number;
+  byMethod: MethodBreakdownItem[];
+  byDay: CashReportDay[];
+  payments: PaymentAttributes[];
+}
 
 export interface BillingSummary {
   totalUsers: number;
   totalCourses: number;
   totalRevenue: number;
   totalCollected: number;
+  totalRefunded: number;
+  totalDiscounted: number;
+  netCash: number;
   totalOutstanding: number;
+  totalCredit: number;
   avgCoursePrice: number;
+  debtorCount: number;
+  creditorCount: number;
+  collectionRate: number;
+  settlementRate: number;
+  todayCollected: number;
+  todayRefunded: number;
+  todayNet: number;
+  weekCollected: number;
+  monthCollected: number;
+  monthRefunded: number;
+  monthNet: number;
+}
+
+export interface BillingOverview {
+  summary: BillingSummary;
+  byMethod: MethodBreakdownItem[];
+  revenueByMonth: RevenueByMonthItem[];
+  sessionStats: SessionStats;
+  aging: DebtAgingItem[];
+  topDebtors: DebtorRow[];
+  recentPayments: PaymentAttributes[];
+  logs: BillingLogItem[];
 }
 
 export interface RevenueByMonthItem {

@@ -67,6 +67,7 @@ export default function Users() {
           "استفاده‌شده",
           "باقی‌مانده",
           "جلسه بعدی",
+          "بدهی",
         ],
         rows.map((user) => [
           user.firstName,
@@ -79,6 +80,7 @@ export default function Users() {
           user.course?.nextSessionDate
             ? formatDateTime(user.course.nextSessionDate)
             : "",
+          user.debt,
         ])
       );
       toast.success("فایل CSV ذخیره شد");

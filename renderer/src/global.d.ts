@@ -24,6 +24,12 @@ import type {
   CourseTemplateWriteInput,
   PaymentAttributes,
   PaymentCreateInput,
+  PaymentUpdateInput,
+  PaymentListFilter,
+  PaymentListResult,
+  DebtorRow,
+  CashReport,
+  BillingOverview,
   SessionStatus,
 } from "../../shared/types";
 
@@ -93,11 +99,15 @@ export type RendererElectronAPI = {
   academySaveTemplate: (data: CourseTemplateWriteInput) => Promise<unknown>;
   academyDeleteTemplate: (id: number) => Promise<number>;
   billingListPayments: (
-    limit?: number,
+    filter?: PaymentListFilter | number,
     userId?: number
-  ) => Promise<PaymentAttributes[]>;
+  ) => Promise<PaymentListResult>;
   billingCreatePayment: (data: PaymentCreateInput) => Promise<PaymentAttributes>;
+  billingUpdatePayment: (data: PaymentUpdateInput) => Promise<PaymentAttributes>;
   billingDeletePayment: (id: number) => Promise<number>;
+  billingGetOverview: () => Promise<BillingOverview>;
+  billingListDebtors: () => Promise<DebtorRow[]>;
+  billingGetRangeReport: (from: string, to: string) => Promise<CashReport>;
   setSessionStatus: (
     sessionId: number,
     status: SessionStatus

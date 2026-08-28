@@ -1,4 +1,5 @@
-import { Copy, CreditCard, Pencil, Phone, PlusCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Copy, CreditCard, Pencil, Phone, PlusCircle, Wallet } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import Modal from "./Modal";
@@ -7,10 +8,29 @@ import ProgressBar from "./ui/ProgressBar";
 import { useUsersStore } from "../store/users";
 import { useAttendanceStore } from "../store/attendance";
 import { formatDateTime, formatMoney, sessionStatusLabel } from "../lib/format";
+import { useBillingStore } from "../store/billing";
+import { onAppDataChange } from "../lib/bus";
+import type { PaymentAttributes } from "../global";
+import { PAYMENT_KIND_LABELS, PAYMENT_METHOD_LABELS } from "@shared/finance";
 
 export default function UserProfileModal() {
-  const { viewUserId, user, closeUser, setPickSessionUserId } = useUsersStore();
+  const { viewUserId, user, closeUser, setPickSessionUserId, getUser } = useUsersStore();
   const { markSession, unmarkSession } = useAttendanceStore();
+  const openPayment = useBillingStore((s) => s.openPayment);
+  const [ledger, setLedger] = useState<PaymentAttributes[]>([]);
+
+  useEffect(() => {
+    if (viewUserId == null) return;
+    const load = async () => {
+      const result = await window.electronAPI?.billingListPayments({ userId: viewUserId, limit: 8 });
+      setLedger(result?.data ?? []);
+    };
+    void load();
+    return onAppDataChange(() => {
+      void getUser(viewUserId);
+      void load();
+    });
+  }, [viewUserId, getUser]);
 
   if (viewUserId === null) return null;
 
@@ -74,6 +94,49 @@ export default function UserProfileModal() {
               </div>
             </div>
 
+            <div className="rounded-2xl border border-line p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-medium">
+                  <Wallet size={16} className="text-gold" /> حساب مالی
+                </div>
+                <button
+                  className="btn btn-primary py-1.5 text-sm"
+                  onClick={() =>
+                    openPayment({
+                      userId: user.id,
+                      amount: user.debt > 0 ? user.debt : undefined,
+                    })
+                  }
+                >
+                  ثبت دریافت
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>قرارداد: {formatMoney(user.contracted)}</div>
+                <div>اعمال‌شده: {formatMoney(user.paidAmount)}</div>
+                <div className={user.debt > 0 ? "text-gold font-medium" : ""}>
+                  بدهی: {formatMoney(user.debt)}
+                </div>
+                <div className={user.credit > 0 ? "text-success font-medium" : "text-muted"}>
+                  بستانکاری: {formatMoney(user.credit)}
+                </div>
+              </div>
+              {ledger.length > 0 && (
+                <div className="space-y-1 max-h-28 overflow-auto text-xs">
+                  {ledger.map((row) => (
+                    <div key={row.id} className="flex justify-between gap-2">
+                      <span>
+                        {PAYMENT_KIND_LABELS[row.kind]} · {PAYMENT_METHOD_LABELS[row.method]}
+                      </span>
+                      <span className={row.kind === "refund" ? "text-danger" : "text-ink"}>
+                        {formatMoney(row.amount)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="space-y-3">
               {user.courses.length === 0 && (
                 <p className="text-muted text-sm">دوره‌ای ثبت نشده است.</p>
@@ -97,7 +160,11 @@ export default function UserProfileModal() {
                     </div>
                     {(course.roomName || course.instructorName || course.debt > 0) && (
                       <p className="text-xs text-muted mb-2">
-                        {[course.roomName, course.instructorName, course.debt > 0 ? `بدهی ${formatMoney(course.debt)}` : null]
+                        {[
+                          course.roomName,
+                          course.instructorName,
+                          course.debt > 0 ? `بدهی ${formatMoney(course.debt)}` : "تسویه",
+                        ]
                           .filter(Boolean)
                           .join(" · ")}
                       </p>
@@ -109,6 +176,20 @@ export default function UserProfileModal() {
                       </span>
                       <span>{remaining.toLocaleString("fa-IR")} باقی‌مانده</span>
                     </div>
+                    {course.debt > 0 && (
+                      <button
+                        className="text-xs text-brand mb-2"
+                        onClick={() =>
+                          openPayment({
+                            userId: user.id,
+                            courseId: course.id,
+                            amount: course.debt,
+                          })
+                        }
+                      >
+                        دریافت مانده این دوره
+                      </button>
+                    )}
                     <ProgressBar
                       value={used}
                       max={course.totalSessions}

@@ -13,6 +13,7 @@ import {
 } from "../types";
 import { addDays, mapSqliteError, startOfDay } from "../../lib/utils";
 import { normalizeStatus } from "../../../shared/session";
+import { appliedSql, settleAccount } from "../../../shared/finance";
 import { PaymentModel } from "./PaymentModel";
 
 function todayRange() {
@@ -34,7 +35,7 @@ function remainingSql(userAlias: string) {
 function debtSql(userAlias: string) {
   return `
     COALESCE((SELECT SUM(cost) FROM Courses WHERE userId = ${userAlias}.id), 0)
-    - COALESCE((SELECT SUM(amount) FROM Payments WHERE userId = ${userAlias}.id), 0)
+    - COALESCE((SELECT SUM(${appliedSql()}) FROM Payments WHERE userId = ${userAlias}.id), 0)
   `;
 }
 
@@ -158,7 +159,9 @@ function loadCourses(userId: number): UserCourseDetail[] {
 
 function mapUser(user: any): UserFindByIdResult {
   const courses = loadCourses(user.id);
-  const debt = courses.reduce((sum, course) => sum + course.debt, 0);
+  const contracted = courses.reduce((sum, course) => sum + course.cost, 0);
+  const paidAmount = PaymentModel.sumByUser(user.id);
+  const { debt, credit } = settleAccount(contracted, paidAmount);
   return {
     id: user.id,
     firstName: user.firstName,
@@ -170,6 +173,9 @@ function mapUser(user: any): UserFindByIdResult {
     course: courses[0] ?? null,
     courses,
     debt,
+    credit,
+    contracted,
+    paidAmount,
   };
 }
 

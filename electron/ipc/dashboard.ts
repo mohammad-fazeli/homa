@@ -10,6 +10,7 @@ import { addDays, startOfWeekSaturday } from "../lib/utils";
 import { SessionModel } from "../db/models/SessionModel";
 import { RoomModel } from "../db/models/RoomModel";
 import { occupiesSlot } from "../../shared/session";
+import { cashInSql, refundSql } from "../../shared/finance";
 
 const WEEKDAYS_FA = [
   "شنبه",
@@ -81,7 +82,7 @@ function buildOverview(): DashboardOverview {
     db
       .prepare(
         `
-        SELECT COALESCE(SUM(amount), 0) AS sum
+        SELECT COALESCE(SUM(${cashInSql()}) - SUM(${refundSql()}), 0) AS sum
         FROM Payments
         WHERE strftime('%Y-%m', paidAt) = strftime('%Y-%m', 'now')
       `

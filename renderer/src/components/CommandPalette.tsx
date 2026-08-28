@@ -18,7 +18,7 @@ const PAGES = [
   { id: "dash", title: "داشبورد", hint: "نمای کلی روز", path: "/", icon: LayoutDashboard },
   { id: "users", title: "مشتریان", hint: "فهرست و جستجو", path: "/users", icon: Users },
   { id: "sessions", title: "تقویم جلسات", hint: "برنامه هفته", path: "/sessions", icon: CalendarDays },
-  { id: "billing", title: "مالی", hint: "درآمد و گزارش", path: "/billing", icon: Wallet },
+  { id: "billing", title: "مالی", hint: "صندوق، بدهی و گزارش", path: "/billing", icon: Wallet },
   { id: "academy", title: "آموزشگاه", hint: "کلاس و مربی", path: "/academy", icon: School },
   { id: "kiosk", title: "کیوسک", hint: "میز ورودی", path: "/kiosk", icon: Monitor },
   { id: "settings", title: "تنظیمات", hint: "RFID و پشتیبان", path: "/settings", icon: Settings },

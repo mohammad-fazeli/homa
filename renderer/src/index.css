@@ -228,3 +228,23 @@ select:focus-visible {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.04em;
 }
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body,
+  html,
+  #root {
+    background: white !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .app-canvas,
+  main {
+    background: white !important;
+    overflow: visible !important;
+    height: auto !important;
+    padding: 0 !important;
+  }
+}

@@ -116,3 +116,29 @@ export function sessionStatusLabel(status?: SessionStatus | string | null) {
       return "رزرو";
   }
 }
+
+export function toDateInputValue(value?: string | Date | null) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return "";
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+export function dateInputToIso(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, (month || 1) - 1, day || 1, 12, 0, 0, 0).toISOString();
+}
+
+export function startOfLocalDay(date = new Date()) {
+  const next = new Date(date);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+export function addDaysIso(value: string | Date, days: number) {
+  const date = new Date(value);
+  date.setDate(date.getDate() + days);
+  return date.toISOString();
+}

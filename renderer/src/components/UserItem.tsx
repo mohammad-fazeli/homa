@@ -55,7 +55,7 @@ export default function UserItem({ user }: { user: UserFindAllItem }) {
               </span>
               {user.debt > 0 && (
                 <span className="px-1.5 py-0.5 rounded-full bg-gold-soft text-gold">
-                  بدهکار
+                  بدهی {user.debt.toLocaleString("fa-IR")}
                 </span>
               )}
               {user.expired && (

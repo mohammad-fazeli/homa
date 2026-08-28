@@ -97,12 +97,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("academy:saveTemplate", data),
   academyDeleteTemplate: (id: number) =>
     ipcRenderer.invoke("academy:deleteTemplate", id),
-  billingListPayments: (limit?: number, userId?: number) =>
-    ipcRenderer.invoke("billing:listPayments", limit, userId),
+  billingListPayments: (filter?: unknown, userId?: number) =>
+    ipcRenderer.invoke("billing:listPayments", filter, userId),
   billingCreatePayment: (data: any) =>
     ipcRenderer.invoke("billing:createPayment", data),
+  billingUpdatePayment: (data: any) =>
+    ipcRenderer.invoke("billing:updatePayment", data),
   billingDeletePayment: (id: number) =>
     ipcRenderer.invoke("billing:deletePayment", id),
+  billingGetOverview: () => ipcRenderer.invoke("billing:getOverview"),
+  billingListDebtors: () => ipcRenderer.invoke("billing:listDebtors"),
+  billingGetRangeReport: (from: string, to: string) =>
+    ipcRenderer.invoke("billing:getRangeReport", from, to),
   setSessionStatus: (sessionId: number, status: string) =>
     ipcRenderer.invoke("set-session-status", sessionId, status),
   ipcRenderer: {
