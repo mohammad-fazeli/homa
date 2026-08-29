@@ -1,6 +1,13 @@
 # هما (Homa)
 
-نرم‌افزار دسکتاپ مدیریت آموزشگاه روی ویندوز: مشتریان، جلسات چندکلاسه، حضور RFID، صندوق و پشتیبان محلی. همهٔ داده‌ها روی همین رایانه می‌ماند.
+[![CI](https://github.com/mohammad-fazeli/homa/actions/workflows/ci.yml/badge.svg)](https://github.com/mohammad-fazeli/homa/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+**رایگان · متن‌باز · بدون اشتراک · دادهٔ محلی**
+
+نرم‌افزار دسکتاپ مدیریت آموزشگاه روی ویندوز: مشتریان، جلسات چندکلاسه، حضور RFID، صندوق و پشتیبان محلی. همهٔ داده‌ها روی همین رایانه می‌ماند — بدون سرور ابری و بدون وابستگی به اینترنت برای کار روزمره.
+
+> **Homa** — Free and open-source Windows desktop app for multi-class academies: customers, sessions, RFID attendance, billing, and local backups. All data stays on your machine.
 
 محصول نهایی نصب‌کنندهٔ NSIS با نام **هما** است (`Homa-Setup-1.0.0.exe`).
 
@@ -22,6 +29,8 @@
 ## نصب و اجرا
 
 ```bash
+git clone https://github.com/mohammad-fazeli/homa.git
+cd homa
 npm install
 npm run dev
 ```
@@ -83,4 +92,12 @@ RFID_PORT=COM3
 | `npm test` | vitest |
 | `postinstall` | بازسازی باینری native برای Electron |
 
-مرجع محصول: `FEATURES.md`.
+## مشارکت
+
+باگ، ایده یا Pull Request خوش‌آمد است. راهنمای کامل: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## لایسنس
+
+این پروژه تحت [MIT License](LICENSE) منتشر شده است — استفاده، تغییر و توزیع آزاد است.
+
+مرجع محصول: [FEATURES.md](FEATURES.md).

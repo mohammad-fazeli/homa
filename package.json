@@ -2,8 +2,29 @@
   "name": "homa",
   "version": "1.0.0",
   "main": "dist-electron/electron/main.js",
-  "description": "نرم‌افزار دسکتاپ مدیریت مشتریان، جلسات و مالی",
-  "author": "Homa",
+  "description": "نرم‌افزار دسکتاپ رایگان و متن‌باز مدیریت آموزشگاه: مشتریان، جلسات، حضور RFID و صندوق",
+  "author": "Mohammad Fazeli",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mohammad-fazeli/homa.git"
+  },
+  "homepage": "https://github.com/mohammad-fazeli/homa#readme",
+  "bugs": {
+    "url": "https://github.com/mohammad-fazeli/homa/issues"
+  },
+  "keywords": [
+    "electron",
+    "react",
+    "academy",
+    "education",
+    "rfid",
+    "attendance",
+    "persian",
+    "rtl",
+    "sqlite",
+    "desktop-app"
+  ],
   "type": "commonjs",
   "scripts": {
     "dev": "concurrently \"npm run dev:renderer\" \"npm run dev:electron\"",
